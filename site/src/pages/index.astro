@@ -1,0 +1,64 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base>
+  <section class="px-6 py-12 max-w-3xl mx-auto">
+    <h1 class="text-4xl md:text-5xl font-semibold mb-4">The Great Stabbing</h1>
+    <p class="text-lg text-stone mb-6">
+      A Europe-wide map of violent crime — stabbings, shootings, fatal beatings — pulled
+      from each country's official police and statistical authorities, and from regional
+      news media. Inspired by
+      <a href="https://hoyodecrimen.com">hoyodecrimen.com</a>.
+    </p>
+    <p class="text-stone mb-6">
+      <strong>Status:</strong> Week 1 — foundations. The map below is a placeholder.
+      Real data lands as country adapters come online; see the
+      <a href="https://github.com/victor-velazquez-ai/great-stabbing">repo</a> for progress.
+    </p>
+  </section>
+
+  <section class="px-6 max-w-6xl mx-auto">
+    <div id="map" class="h-[70vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
+    <p class="text-xs text-stone mt-2">
+      Map: OpenStreetMap raster (placeholder). The production map uses NUTS vector tiles
+      from Eurostat GISCO, served via PMTiles.
+    </p>
+  </section>
+
+  <section class="px-6 py-12 max-w-3xl mx-auto prose prose-sm text-ink">
+    <h2 class="text-2xl font-semibold mt-4 mb-2">What's coming</h2>
+    <ul class="list-disc pl-5 text-stone space-y-1">
+      <li>Per-country choropleth shaded by homicide rate, knife-offence rate, etc.</li>
+      <li>Time slider, year-over-year comparisons, weapon breakdowns.</li>
+      <li>Incident-level pins (UK police data + monthly news extraction).</li>
+      <li>Foreign-background dimension where the official source publishes it (DE, DK, AT, sometimes SE).</li>
+      <li>Per-country methodology pages with source links and last-fetched timestamps.</li>
+    </ul>
+  </section>
+</Base>
+
+<script>
+  import maplibregl from "maplibre-gl";
+  import "maplibre-gl/dist/maplibre-gl.css";
+
+  const map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        osm: {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      },
+      layers: [{ id: "osm", type: "raster", source: "osm" }],
+    },
+    center: [10, 50],
+    zoom: 3.5,
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+</script>

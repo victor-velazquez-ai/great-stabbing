@@ -1,0 +1,67 @@
+name: Extraction — Monthly Fetch + Filter
+
+on:
+  schedule:
+    # 1st of each month, 08:00 UTC. Pulls news from the previous ~40 days,
+    # filters for violent-crime candidates, commits to extraction/_inbox/,
+    # and opens an issue prompting the manual Claude extraction step.
+    - cron: "0 8 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - run: uv sync
+
+      - name: Determine month label
+        id: month
+        run: echo "label=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch and filter
+        run: uv run python -m extraction.pipeline fetch ${{ steps.month.outputs.label }}
+        continue-on-error: true
+
+      - name: Commit inbox file
+        run: |
+          git config user.name "great-stabbing-bot"
+          git config user.email "bot@great-stabbing.local"
+          if [[ -n "$(git status --porcelain extraction/_inbox/)" ]]; then
+            git add extraction/_inbox/
+            git commit -m "chore(extraction): inbox ${{ steps.month.outputs.label }}"
+            git push
+          fi
+
+      - name: Open manual-extraction issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const month = "${{ steps.month.outputs.label }}";
+            const title = `Monthly extraction ready — ${month}`;
+            const body = [
+              `The fetch + filter step ran. Candidate articles are in`,
+              `\`extraction/_inbox/candidate_articles_${month}.jsonl\`.`,
+              ``,
+              `## To finalise:`,
+              `1. \`git pull\``,
+              `2. Open this repo in Claude Desktop or Claude Code.`,
+              `3. Point Claude at \`extraction/prompts/incident_extraction.md\` and ask it to`,
+              `   process the inbox file. Output goes to`,
+              `   \`extraction/_outbox/extracted_incidents_${month}.jsonl\`.`,
+              `4. Run \`uv run python -m extraction.pipeline finalize ${month}\`.`,
+              `5. Commit and push. Close this issue.`,
+            ].join("\n");
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["extraction", "manual-step"],
+            });

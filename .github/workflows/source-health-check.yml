@@ -1,0 +1,24 @@
+name: Source URL health check
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # Mondays at noon UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - run: uv sync
+
+      # TODO: implement scripts/check_sources.py to ping each adapter's
+      # known source URLs and open a GH issue on the first failure per source.
+      - name: Placeholder
+        run: echo "source health check not yet implemented"

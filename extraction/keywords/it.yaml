@@ -1,0 +1,17 @@
+positive:
+  - accoltellato
+  - accoltellata
+  - accoltellamento
+  - coltellata
+  - sparatoria
+  - colpi di pistola
+  - omicidio
+  - ucciso
+  - uccisa
+  - aggressione
+  - pestato a morte
+negative:
+  - film
+  - romanzo
+  - serie tv
+  - storico

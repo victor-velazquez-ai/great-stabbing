@@ -1,0 +1,84 @@
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+
+### Node ###
+node_modules/
+.npm
+.pnpm-store/
+yarn-debug.log*
+yarn-error.log*
+.pnp.*
+
+### Astro ###
+.astro/
+site/dist/
+
+### IDE ###
+.vscode/
+.idea/
+*.swp
+*.swo
+
+### Claude Code local state ###
+.claude/
+
+### OS ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### Data — interim only. Parquet outputs ARE committed. ###
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+
+### Large NUTS source GeoJSON — regenerable from scripts/refresh_nuts_lookup.py ###
+data/nuts/*.geojson
+
+### Tile build outputs are committed for now (small) — re-enable if size grows ###
+# data/tiles/*
+
+### Extraction inbox/outbox: candidate articles ARE committed (audit trail), ###
+### but extraction working files are not. ###
+extraction/_inbox/*.tmp
+extraction/_outbox/*.tmp
+
+### Secrets ###
+.env
+.env.local
+.env.*.local
+*.pem
+
+### Misc ###
+*.log
+.duckdb_history

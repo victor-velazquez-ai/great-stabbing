@@ -1,0 +1,37 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Data — The Great Stabbing">
+  <section class="px-6 py-12 max-w-3xl mx-auto prose">
+    <h1 class="text-3xl font-semibold mb-4">Data</h1>
+    <p class="text-stone">
+      All datasets are committed to the repo as Parquet files. You can download them
+      directly or query them in-place with DuckDB.
+    </p>
+
+    <h2 class="text-xl font-semibold mt-8 mb-2">Files</h2>
+    <ul class="list-disc pl-5 text-stone space-y-2">
+      <li>
+        <code>data/parquet/crime_aggregates.parquet</code> — Tier 1 official statistics,
+        one row per (country, period, region, category, suspect dimension).
+      </li>
+      <li>
+        <code>data/parquet/incidents.parquet</code> — Tier 2 news-extracted incidents,
+        one row per real incident, with verbatim source quotes.
+      </li>
+      <li>
+        <code>data/parquet/nuts_regions.parquet</code> — Eurostat NUTS 2021 region
+        lookup (codes, names, parents, centroids).
+      </li>
+    </ul>
+
+    <h2 class="text-xl font-semibold mt-8 mb-2">Querying with DuckDB</h2>
+    <pre class="bg-ink/5 p-4 rounded text-sm overflow-x-auto"><code>SELECT region_code, count, rate_per_100k
+FROM 'data/parquet/crime_aggregates.parquet'
+WHERE source_country = 'DE'
+  AND crime_category = 'homicide'
+  AND suspect_dim = 'total'
+  AND period_type = 'year'
+ORDER BY period_start DESC, count DESC;</code></pre>
+  </section>
+</Base>

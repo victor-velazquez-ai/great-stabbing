@@ -1,0 +1,26 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Methodology — The Great Stabbing">
+  <section class="px-6 py-12 max-w-3xl mx-auto prose">
+    <h1 class="text-3xl font-semibold mb-4">Methodology</h1>
+    <p class="text-stone">
+      Full methodology document lives in the repo at
+      <a href="https://github.com/victor-velazquez-ai/great-stabbing/blob/main/docs/methodology.md">
+        docs/methodology.md</a>.
+    </p>
+    <p class="text-stone mt-4">
+      Headline rules:
+    </p>
+    <ul class="list-disc pl-5 text-stone space-y-2 mt-2">
+      <li>Show only what the official source publishes. No imputation, ever.</li>
+      <li>The foreign-background variable is shown only where the source publishes it
+        (DE BKA, DK Statbank, AT BMI, occasional SE BRÅ). Always with absolute counts
+        AND rates per 100k of the relevant population group.</li>
+      <li>News-extracted incidents are illustrative pins, never aggregated into rates.</li>
+      <li>Suspect descriptions are verbatim quotes from sources. Nationality fields are
+        filled only when an article explicitly states them.</li>
+      <li>No names of victims or suspects appear on the map.</li>
+    </ul>
+  </section>
+</Base>

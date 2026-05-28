@@ -1,0 +1,18 @@
+native_code,native_name,nuts_code,notes
+# German Bundesländer → NUTS-1. Hand-verified.
+01,Schleswig-Holstein,DEF,
+02,Hamburg,DE6,
+03,Niedersachsen,DE9,
+04,Bremen,DE5,
+05,Nordrhein-Westfalen,DEA,
+06,Hessen,DE7,
+07,Rheinland-Pfalz,DEB,
+08,Baden-Württemberg,DE1,
+09,Bayern,DE2,
+10,Saarland,DEC,
+11,Berlin,DE3,
+12,Brandenburg,DE4,
+13,Mecklenburg-Vorpommern,DE8,
+14,Sachsen,DED,
+15,Sachsen-Anhalt,DEE,
+16,Thüringen,DEG,

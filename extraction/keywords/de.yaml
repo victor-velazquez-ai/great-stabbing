@@ -1,0 +1,20 @@
+positive:
+  - Messerangriff
+  - Messerstecher
+  - Messerattacke
+  - erstochen
+  - Schießerei
+  - erschossen
+  - tödlich verletzt
+  - getötet
+  - Tötung
+  - Mord
+  - Totschlag
+  - Schwerverletzte
+  - Schwerverletzter
+  - Messerstich
+negative:
+  - Film
+  - Roman
+  - Krimi
+  - historisch

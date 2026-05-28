@@ -1,0 +1,40 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "The Great Stabbing",
+  description = "A Europe-wide map of violent crime, sourced from official statistical authorities and news media.",
+} = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="min-h-screen">
+    <header class="border-b border-ink/10 px-6 py-4 flex items-baseline justify-between">
+      <a href="/" class="no-underline font-sans text-xl font-semibold text-ink">The Great Stabbing</a>
+      <nav class="text-sm text-stone space-x-4">
+        <a href="/methodology">Methodology</a>
+        <a href="/data">Data</a>
+        <a href="/about">About</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="border-t border-ink/10 px-6 py-4 mt-12 text-xs text-stone">
+      Code MIT. Each dataset retains its own license — see methodology pages.
+      <a href="https://github.com/victor-velazquez-ai/great-stabbing">Source</a>.
+    </footer>
+  </body>
+</html>

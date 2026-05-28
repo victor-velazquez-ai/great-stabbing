@@ -1,0 +1,7 @@
+native_code,native_name,nuts_code,notes
+# Danish regions → NUTS-2.
+081,Region Nordjylland,DK05,
+082,Region Midtjylland,DK04,
+083,Region Syddanmark,DK03,
+084,Region Hovedstaden,DK01,
+085,Region Sjælland,DK02,

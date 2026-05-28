@@ -1,0 +1,17 @@
+positive:
+  - coup de couteau
+  - poignardé
+  - poignardée
+  - attaque au couteau
+  - tué par balle
+  - fusillade
+  - tirs
+  - homicide
+  - meurtre
+  - mort dans une rixe
+  - violemment agressé
+negative:
+  - film
+  - roman
+  - polar
+  - historique

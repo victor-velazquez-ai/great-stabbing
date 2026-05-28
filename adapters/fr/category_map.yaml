@@ -1,0 +1,7 @@
+mapping: {}
+notes: |
+  Interstats publishes ~12 indicators. We use:
+  - "Homicides" → homicide
+  - "Coups et blessures volontaires" → assault_serious
+  - "Vols violents sans arme" / "...avec arme" → robbery_violent
+  No foreign-background dimension.

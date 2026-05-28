@@ -1,0 +1,16 @@
+positive:
+  - knivskuren
+  - knivhuggen
+  - knivattack
+  - skjuten
+  - skottlossning
+  - mord
+  - dråp
+  - misshandel med dödlig utgång
+  - dödad
+  - allvarligt skadad
+negative:
+  - film
+  - roman
+  - tv-serie
+  - historisk

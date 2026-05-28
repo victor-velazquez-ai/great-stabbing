@@ -1,0 +1,8 @@
+# BKA PKS native categories → harmonised. Populate when implementing.
+mapping: {}
+notes: |
+  PKS uses 6-digit Straftatenschlüssel. Key codes:
+  - 010000 = Mord/Totschlag (homicide + attempted)
+  - 220000 = Gefährliche/schwere Körperverletzung (assault_serious)
+  - 222100 = Mit Messer (knife_offence subset of 222000)
+  - Suspect-background dimension via T81/T82 "Nichtdeutsche Tatverdächtige".

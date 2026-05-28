@@ -1,0 +1,16 @@
+positive:
+  - knivstik
+  - knivstukket
+  - knivoverfald
+  - skudt
+  - skyderi
+  - skuddrab
+  - drab
+  - drabsforsøg
+  - mord
+  - dræbt
+negative:
+  - film
+  - roman
+  - tv-serie
+  - historisk

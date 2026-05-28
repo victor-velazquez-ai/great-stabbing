@@ -1,0 +1,24 @@
+positive:
+  - stabbing
+  - stabbed
+  - knifed
+  - knife attack
+  - shooting
+  - shot dead
+  - gunman
+  - fatally wounded
+  - beaten to death
+  - rammed
+  - attack
+  - homicide
+  - murder
+  - manslaughter
+negative:
+  - film
+  - movie
+  - novel
+  - tv series
+  - in fiction
+  - historical
+  - centuries ago
+  - in the 19th century

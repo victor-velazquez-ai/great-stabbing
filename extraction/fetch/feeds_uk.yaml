@@ -1,0 +1,6 @@
+feeds:
+  # Hand-curated regional UK outlets. Mid-market press is where local stabbings
+  # actually get reported. National outlets cover only the high-profile cases.
+  # TODO: populate in Week 11.
+  # - { name: "BBC News - England", url: "http://feeds.bbci.co.uk/news/england/rss.xml", lang: "en" }
+  # - { name: "Manchester Evening News", url: "...", lang: "en" }

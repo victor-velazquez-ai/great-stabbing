@@ -1,0 +1,4 @@
+native_code,native_name,nuts_code,notes
+# UK police forces → NUTS. Populate in Week 2 using ONS lookup (PFA → ITL).
+# Example:
+# metropolitan,Metropolitan Police,UKI,Greater London

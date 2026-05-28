@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bone text-ink antialiased;
+  }
+  a {
+    @apply text-rust underline decoration-rust/40 underline-offset-2 hover:decoration-rust;
+  }
+  h1, h2, h3, h4 {
+    @apply font-sans tracking-tight;
+  }
+}

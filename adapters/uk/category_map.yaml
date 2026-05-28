@@ -1,0 +1,7 @@
+# UK crime category mapping: native (data.police.uk) → harmonised.
+# Populate in Week 2.
+mapping: {}
+notes: |
+  data.police.uk publishes 14 crime types. We map only the violent-bodily-harm
+  subset into our 8 harmonised categories. Knife- and gun-specific breakdowns
+  come from a separate ONS table.

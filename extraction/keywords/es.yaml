@@ -1,0 +1,18 @@
+positive:
+  - apuñalado
+  - apuñalada
+  - apuñalamiento
+  - cuchillada
+  - navajazo
+  - arma blanca
+  - tiroteo
+  - disparo
+  - asesinato
+  - homicidio
+  - apaleado
+  - apaleada
+negative:
+  - película
+  - novela
+  - serie
+  - histórico

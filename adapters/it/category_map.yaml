@@ -1,0 +1,5 @@
+mapping: {}
+notes: |
+  ISTAT "Delitti denunciati dalle forze di polizia all'autorità giudiziaria"
+  has fine-grained categories. Key: "Omicidi volontari", "Lesioni dolose",
+  "Rapine".
