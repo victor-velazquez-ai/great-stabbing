@@ -1,0 +1,12 @@
+feeds:
+  # Regional German press + presseportal.de which aggregates Polizei press
+  # releases by Bundesland — invaluable for HIGH-confidence pin anchors.
+  - { name: "presseportal — Polizei", url: "https://www.presseportal.de/rss/polizei.rss2", lang: "de" }
+  - { name: "Tagesschau", url: "https://www.tagesschau.de/inland/index~rss2.xml", lang: "de" }
+  - { name: "Bild — Regional", url: "https://www.bild.de/rss/feeds/regional/index.xml", lang: "de" }
+  - { name: "Süddeutsche Zeitung — München", url: "https://rss.sueddeutsche.de/rss/muenchen", lang: "de" }
+  - { name: "WAZ — Region", url: "https://www.waz.de/rss/feed.region.rss", lang: "de" }
+  - { name: "RBB24 — Berlin", url: "https://www.rbb24.de/index.feed", lang: "de" }
+  - { name: "MDR Sachsen", url: "https://www.mdr.de/nachrichten/sachsen/index-rss.xml", lang: "de" }
+  - { name: "NDR — Norddeutschland", url: "https://www.ndr.de/nachrichten/index-rss.xml", lang: "de" }
+  - { name: "Hessenschau", url: "https://www.hessenschau.de/index~rss2.xml", lang: "de" }

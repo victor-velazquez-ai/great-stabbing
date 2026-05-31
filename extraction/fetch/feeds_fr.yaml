@@ -1,0 +1,12 @@
+feeds:
+  # Regional French press. La presse quotidienne régionale (PQR) is where
+  # most stabbings get reported.
+  - { name: "Le Parisien — Faits divers", url: "https://www.leparisien.fr/faits-divers/rss.xml", lang: "fr" }
+  - { name: "Le Figaro — Faits divers", url: "https://www.lefigaro.fr/rss/figaro_faits-divers.xml", lang: "fr" }
+  - { name: "20 Minutes — Faits divers", url: "https://www.20minutes.fr/feeds/rss-faits-divers.xml", lang: "fr" }
+  - { name: "France Bleu — Faits divers", url: "https://www.francebleu.fr/rss/faits-divers.xml", lang: "fr" }
+  - { name: "Ouest-France — Faits divers", url: "https://www.ouest-france.fr/rss/faits-divers", lang: "fr" }
+  - { name: "Le Dauphiné Libéré — Faits divers", url: "https://www.ledauphine.com/faits-divers/rss", lang: "fr" }
+  - { name: "La Provence", url: "https://www.laprovence.com/rss.xml", lang: "fr" }
+  - { name: "Le Progrès", url: "https://www.leprogres.fr/rss", lang: "fr" }
+  - { name: "BFMTV — Faits divers", url: "https://www.bfmtv.com/rss/police-justice/", lang: "fr" }

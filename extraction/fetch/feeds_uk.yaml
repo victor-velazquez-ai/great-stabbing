@@ -1,6 +1,12 @@
 feeds:
-  # Hand-curated regional UK outlets. Mid-market press is where local stabbings
-  # actually get reported. National outlets cover only the high-profile cases.
-  # TODO: populate in Week 11.
-  # - { name: "BBC News - England", url: "http://feeds.bbci.co.uk/news/england/rss.xml", lang: "en" }
-  # - { name: "Manchester Evening News", url: "...", lang: "en" }
+  # Regional UK press where local stabbings actually get covered.
+  - { name: "BBC News - England", url: "https://feeds.bbci.co.uk/news/england/rss.xml", lang: "en" }
+  - { name: "BBC News - UK", url: "https://feeds.bbci.co.uk/news/uk/rss.xml", lang: "en" }
+  - { name: "Manchester Evening News", url: "https://www.manchestereveningnews.co.uk/news/?service=rss", lang: "en" }
+  - { name: "Birmingham Mail", url: "https://www.birminghammail.co.uk/news/?service=rss", lang: "en" }
+  - { name: "Liverpool Echo", url: "https://www.liverpoolecho.co.uk/news/?service=rss", lang: "en" }
+  - { name: "MyLondon", url: "https://www.mylondon.news/news/?service=rss", lang: "en" }
+  - { name: "Yorkshire Live", url: "https://www.yorkshirelive.co.uk/news/?service=rss", lang: "en" }
+  - { name: "STV News", url: "https://news.stv.tv/feed", lang: "en" }
+  - { name: "BBC News - Wales", url: "https://feeds.bbci.co.uk/news/wales/rss.xml", lang: "en" }
+  - { name: "BBC News - Northern Ireland", url: "https://feeds.bbci.co.uk/news/northern_ireland/rss.xml", lang: "en" }
