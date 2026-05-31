@@ -36,13 +36,20 @@ IT_DIR = REPO_ROOT / "adapters" / "it"
 # 2. Direct database export pages publish XLSX/CSV at varying URLs.
 SDMX_BASE = "https://esploradati.istat.it/SDMXWS/rest"
 
-# Candidate dataflow IDs known to have existed historically. The actual ID
-# in the current ISTAT system needs to be confirmed by listing dataflows:
-# GET {SDMX_BASE}/dataflow/IT1?detail=allstubs
+# Candidate dataflow IDs. Confirmed-present in the live IT1 catalog (probed
+# 2026-05-31): DCCV_PROCEEDCRIME_M plus its 13 versioned variants
+# (73_436_DF_DCCV_PROCEEDCRIME_M_1 … _13). These are *proceedings* (court-side)
+# rather than police-reported crimes; the latter likely lives in a sibling
+# dataflow whose ID still needs probing. Recommended next-step query:
+#   GET {SDMX_BASE}/dataflow/IT1?detail=allstubs
+#   grep DELITTI | grep DENUNCIATI
+# to find the police-reported series. Legacy IDs kept here for reference.
 CANDIDATE_DATAFLOWS: tuple[str, ...] = (
-    "JUS_DELITTI_REGIONE",
-    "DCCV_DELITTIPS",
-    "151_910",  # legacy
+    "DCCV_PROCEEDCRIME_M",  # confirmed exists; proceedings (court-stage) data
+    "73_436_DF_DCCV_PROCEEDCRIME_M_1",
+    "JUS_DELITTI_REGIONE",  # not in current catalog
+    "DCCV_DELITTIPS",       # legacy
+    "151_910",              # legacy
 )
 
 
