@@ -1,7 +1,49 @@
-# UK crime category mapping: native (data.police.uk) → harmonised.
-# Populate in Week 2.
-mapping: {}
+# ONS Police Force Area data tables — offence type → harmonised category.
+#
+# ONS PFA tables group offences into headline categories. We map the ones we
+# care about (violent bodily-harm crimes). Categories not mapped are skipped.
+#
+# Note: ONS does NOT publish a foreign-background dimension. Every UK row
+# will have suspect_dim="total" only. The methodology page makes this clear.
+#
+# Knife and firearm specific stats live in separate ONS tables (not PFA) —
+# they will be added as a second UK source later.
+
+mapping:
+  # Direct mappings — column headers as ONS Table P1 publishes them.
+  "Homicide": homicide
+  "Violence with injury": assault_serious
+  "Sexual offences": sexual_assault
+  "Robbery": robbery_violent
+
+  # Aggregated bucket. P1 column "Violence against the person" is the
+  # umbrella total. We treat it as violent_total.
+  "Violence against the person": violent_total
+
+skip:
+  # Categories not in our harmonised set. Left explicit so adding a new
+  # mapping is a deliberate decision, not an accidental silent map.
+  - "Violence without injury"
+  - "Stalking and harassment"
+  - "Theft offences"
+  - "Vehicle offences"
+  - "Theft from the person"
+  - "Bicycle theft"
+  - "Shoplifting"
+  - "All other theft offences"
+  - "Criminal damage and arson"
+  - "Drug offences"
+  - "Possession of weapons offences"
+  - "Public order offences"
+  - "Miscellaneous crimes against society"
+  - "Fraud offences"
+
 notes: |
-  data.police.uk publishes 14 crime types. We map only the violent-bodily-harm
-  subset into our 8 harmonised categories. Knife- and gun-specific breakdowns
-  come from a separate ONS table.
+  The "Violence with injury" → assault_serious mapping is intentional: ONS's
+  "with injury" sub-category corresponds to grievous bodily harm under UK
+  statute (sections 18 and 20 of the Offences Against the Person Act 1861),
+  closer to the harmonised assault_serious than to violent_total.
+
+  Robbery: ONS classifies all robbery as inherently violent (force or threat
+  of force is part of the definition), so all robbery rows map to
+  robbery_violent — not just the "of personal property" subset.

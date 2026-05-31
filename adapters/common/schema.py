@@ -79,7 +79,14 @@ class AggregateRow(BaseModel):
 
 
 def aggregates_schema() -> pa.DataFrameSchema:
-    """Pandera schema used to validate any DataFrame before write_parquet."""
+    """Pandera schema used to validate any DataFrame before write_parquet.
+
+    `coerce=True` lets pandera auto-cast nullable string columns from `object`
+    (pandas default when all values are NULL) to `string[pyarrow]`, which the
+    pyarrow Parquet writer expects. Without this, an adapter that emits a
+    column with all-NULL values (e.g. suspect_dim_value for sources that don't
+    publish a foreign-background dimension) trips a dtype check.
+    """
     return pa.DataFrameSchema(
         {
             "source_country": pa.Column(str, pa.Check.str_length(2, 2)),
@@ -103,6 +110,7 @@ def aggregates_schema() -> pa.DataFrameSchema:
             "notes": pa.Column(str, nullable=True),
         },
         strict=True,
+        coerce=True,
         unique=[
             "source_country",
             "period_start",

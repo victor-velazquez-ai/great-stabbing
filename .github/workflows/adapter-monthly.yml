@@ -29,12 +29,16 @@ jobs:
         run: uv run python scripts/run_adapter.py FR
         continue-on-error: true
 
-      - name: Commit Parquet updates
+      - name: Regenerate site data JSON
+        run: uv run python scripts/build_site_data.py
+        continue-on-error: true
+
+      - name: Commit Parquet + site-data updates
         run: |
           git config user.name "great-stabbing-bot"
           git config user.email "bot@great-stabbing.local"
-          if [[ -n "$(git status --porcelain data/)" ]]; then
-            git add data/
+          if [[ -n "$(git status --porcelain data/ site/src/data/)" ]]; then
+            git add data/ site/src/data/
             git commit -m "chore(data): monthly UK+FR refresh $(date -u +%Y-%m-%d)"
             git push
           else

@@ -13,20 +13,40 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from adapters.common.base import SourceFile
 
 log = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 60
-DEFAULT_UA = "great-stabbing/0.0.1 (+https://github.com/victor-velazquez-ai/great-stabbing)"
+DEFAULT_UA = (
+    "Mozilla/5.0 (compatible; great-stabbing/0.0.1; "
+    "+https://github.com/victor-velazquez-ai/great-stabbing)"
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = REPO_ROOT / "data" / "raw"
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry network errors and 5xx; never retry on 4xx (404/429/etc — file isn't there)."""
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        return exc.response.status_code >= 500
+    return isinstance(exc, requests.RequestException) and not isinstance(exc, requests.HTTPError)
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(min=2, max=30),
+    retry=retry_if_exception(_is_retryable),
+    reraise=True,
+)
 def _get(url: str, timeout: int = DEFAULT_TIMEOUT) -> bytes:
     r = requests.get(url, timeout=timeout, headers={"User-Agent": DEFAULT_UA})
     r.raise_for_status()

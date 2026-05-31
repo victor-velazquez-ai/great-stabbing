@@ -1,0 +1,10 @@
+[
+  {
+    "country": "UK",
+    "latest_period_end": "2025-12-31T00:00:00",
+    "retrieved_at": "2026-05-31T19:50:24.542089",
+    "n_rows": 50,
+    "n_regions": 10,
+    "authority": "ONS"
+  }
+]

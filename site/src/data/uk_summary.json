@@ -1,0 +1,122 @@
+[
+  {
+    "region_code": "UKI",
+    "homicide_count": 99,
+    "homicide_rate": 1.1166026405960627,
+    "violent_total_count": 246759,
+    "violent_total_rate": 2783.148999907514,
+    "population": 8866180,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "London"
+  },
+  {
+    "region_code": "UKL",
+    "homicide_count": 35,
+    "homicide_rate": 1.1060303937152192,
+    "violent_total_count": 106295,
+    "violent_total_rate": 3359.0143057131213,
+    "population": 3164470,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "Wales"
+  },
+  {
+    "region_code": "UKG",
+    "homicide_count": 66,
+    "homicide_rate": 1.0943124932019983,
+    "violent_total_count": 204733,
+    "violent_total_rate": 3394.5739344049193,
+    "population": 6031184,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "West Midlands (England)"
+  },
+  {
+    "region_code": "UKF",
+    "homicide_count": 45,
+    "homicide_rate": 0.911865374627731,
+    "violent_total_count": 149418,
+    "violent_total_rate": 3027.757789913918,
+    "population": 4934939,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "East Midlands (England)"
+  },
+  {
+    "region_code": "UKC",
+    "homicide_count": 21,
+    "homicide_rate": 0.7900980398796342,
+    "violent_total_count": 97957,
+    "violent_total_rate": 3685.506366309016,
+    "population": 2657898,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "North East (England)"
+  },
+  {
+    "region_code": "UKE",
+    "homicide_count": 43,
+    "homicide_rate": 0.7738726205666547,
+    "violent_total_count": 224099,
+    "violent_total_rate": 4033.118148752715,
+    "population": 5556470,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "Yorkshire and The Humber"
+  },
+  {
+    "region_code": "UKH",
+    "homicide_count": 48,
+    "homicide_rate": 0.7501761741859065,
+    "violent_total_count": 179372,
+    "violent_total_rate": 2803.3458482515503,
+    "population": 6398497,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "East of England"
+  },
+  {
+    "region_code": "UKK",
+    "homicide_count": 37,
+    "homicide_rate": 0.6418172378579887,
+    "violent_total_count": 179642,
+    "violent_total_rate": 3116.1441146833736,
+    "population": 5764881,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "South West (England)"
+  },
+  {
+    "region_code": "UKJ",
+    "homicide_count": 59,
+    "homicide_rate": 0.62906332258026,
+    "violent_total_count": 266703,
+    "violent_total_rate": 2843.611446137679,
+    "population": 9379024,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "South East (England)"
+  },
+  {
+    "region_code": "UKD",
+    "homicide_count": 47,
+    "homicide_rate": 0.6253232222559719,
+    "violent_total_count": 286616,
+    "violent_total_rate": 3813.3540568110134,
+    "population": 7516113,
+    "period_start": "2025-01-01T00:00:00",
+    "period_end": "2025-12-31T00:00:00",
+    "source_url": "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/crimeandjustice/datasets/policeforceareadatatables/yearendingdecember2025/pfatablesyedec2025.xlsx",
+    "region_name": "North West (England)"
+  }
+]

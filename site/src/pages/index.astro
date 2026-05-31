@@ -1,5 +1,40 @@
 ---
 import Base from "../layouts/Base.astro";
+import ukSummary from "../data/uk_summary.json";
+import meta from "../data/aggregates_meta.json";
+
+interface UKRow {
+  region_code: string;
+  region_name: string | null;
+  homicide_count: number | null;
+  homicide_rate: number | null;
+  violent_total_count: number | null;
+  violent_total_rate: number | null;
+  population: number | null;
+  period_start: string;
+  period_end: string;
+  source_url: string;
+}
+
+interface MetaRow {
+  country: string;
+  latest_period_end: string | null;
+  retrieved_at: string | null;
+  n_rows: number;
+  n_regions: number;
+  authority: string;
+}
+
+const uk = ukSummary as UKRow[];
+const ukMeta = (meta as MetaRow[]).find((m) => m.country === "UK");
+
+const nf = new Intl.NumberFormat("en-GB");
+const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+
+const periodEnd = uk[0]?.period_end?.split("T")[0] ?? "—";
+const periodLabel = periodEnd === "—"
+  ? "no data"
+  : `year ending ${new Date(periodEnd).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`;
 ---
 <Base>
   <section class="px-6 py-12 max-w-3xl mx-auto">
@@ -10,29 +45,89 @@ import Base from "../layouts/Base.astro";
       news media. Inspired by
       <a href="https://hoyodecrimen.com">hoyodecrimen.com</a>.
     </p>
-    <p class="text-stone mb-6">
-      <strong>Status:</strong> Week 1 — foundations. The map below is a placeholder.
-      Real data lands as country adapters come online; see the
-      <a href="https://github.com/victor-velazquez-ai/great-stabbing">repo</a> for progress.
+    <p class="text-stone mb-6 text-sm">
+      <strong>Status:</strong> Week 2 — first country (UK) live with real ONS data.
+      Six more countries land in Week 3. The interactive map below is still a
+      placeholder; the choropleth layer arrives once a second country's data is in.
     </p>
   </section>
 
   <section class="px-6 max-w-6xl mx-auto">
-    <div id="map" class="h-[70vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
+    <div id="map" class="h-[55vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
     <p class="text-xs text-stone mt-2">
       Map: OpenStreetMap raster (placeholder). The production map uses NUTS vector tiles
       from Eurostat GISCO, served via PMTiles.
     </p>
   </section>
 
-  <section class="px-6 py-12 max-w-3xl mx-auto prose prose-sm text-ink">
-    <h2 class="text-2xl font-semibold mt-4 mb-2">What's coming</h2>
+  <section class="px-6 py-12 max-w-4xl mx-auto">
+    <div class="flex items-baseline justify-between mb-4">
+      <h2 class="text-2xl font-semibold">United Kingdom — recorded homicide, by NUTS-1 region</h2>
+      <span class="text-xs text-stone">{periodLabel}</span>
+    </div>
+
+    {uk.length === 0 ? (
+      <p class="text-stone">No data yet — run <code>uv run python scripts/run_adapter.py UK</code>.</p>
+    ) : (
+      <div class="overflow-x-auto rounded-lg border border-ink/10">
+        <table class="w-full text-sm">
+          <thead class="bg-ink/5 text-left">
+            <tr>
+              <th class="px-3 py-2 font-medium">Region</th>
+              <th class="px-3 py-2 font-medium text-right">Homicides</th>
+              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
+              <th class="px-3 py-2 font-medium text-right">Violent total</th>
+              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
+              <th class="px-3 py-2 font-medium text-right text-stone">Population</th>
+            </tr>
+          </thead>
+          <tbody>
+            {uk.map((r) => (
+              <tr class="border-t border-ink/10 hover:bg-ink/5">
+                <td class="px-3 py-2">
+                  <span class="font-medium">{r.region_name ?? r.region_code}</span>
+                  <span class="text-xs text-stone ml-1">({r.region_code})</span>
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums font-medium">
+                  {r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.violent_total_count !== null ? nf.format(r.violent_total_count) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums">
+                  {r.violent_total_rate !== null ? rateFmt.format(r.violent_total_rate) : "—"}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums text-stone">{r.population !== null ? nf.format(r.population) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    <p class="text-xs text-stone mt-3">
+      Source: Office for National Statistics, <a href={uk[0]?.source_url}>Police force area data tables</a>.
+      ONS rolls 12 months of data per release; figures here are England &amp; Wales only — Scotland and
+      Northern Ireland publish separately and will be added later. Suspect-background dimension not
+      published by ONS for PFA totals (see <a href="/methodology">methodology</a>).
+    </p>
+  </section>
+
+  {ukMeta && (
+    <section class="px-6 pb-12 max-w-4xl mx-auto text-xs text-stone">
+      <p>
+        UK dataset: {nf.format(ukMeta.n_rows)} rows across {ukMeta.n_regions} NUTS-1 regions,
+        last refreshed {ukMeta.retrieved_at?.split("T")[0] ?? "—"} from {ukMeta.authority}.
+      </p>
+    </section>
+  )}
+
+  <section class="px-6 py-8 max-w-3xl mx-auto">
+    <h2 class="text-2xl font-semibold mt-4 mb-2">What's coming next</h2>
     <ul class="list-disc pl-5 text-stone space-y-1">
-      <li>Per-country choropleth shaded by homicide rate, knife-offence rate, etc.</li>
-      <li>Time slider, year-over-year comparisons, weapon breakdowns.</li>
-      <li>Incident-level pins (UK police data + monthly news extraction).</li>
+      <li>Germany (BKA PKS), France (Interstats), Sweden (BRÅ), Denmark (Statbank), Spain (Min. Interior), Italy (ISTAT) adapters — landing in Week 3.</li>
+      <li>Choropleth map shaded by homicide rate, with metric selector and time slider.</li>
+      <li>Incident-level pins (UK street data + monthly news extraction).</li>
       <li>Foreign-background dimension where the official source publishes it (DE, DK, AT, sometimes SE).</li>
-      <li>Per-country methodology pages with source links and last-fetched timestamps.</li>
     </ul>
   </section>
 </Base>
