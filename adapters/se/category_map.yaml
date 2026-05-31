@@ -1,4 +1,30 @@
-mapping: {}
+# BRÅ (Brottsförebyggande rådet) — Reported offences by län.
+#
+# Foreign-background published? Occasionally, in special reports — not in the
+# main statistical database. For MVP we emit only suspect_dim="total".
+
+mapping:
+  # Direct mappings. BRÅ uses Swedish-language category names.
+  "Mord, dråp och misshandel med dödlig utgång": homicide
+  "Försök till mord eller dråp": attempted_homicide
+  "Misshandel": assault_serious
+  "Grov misshandel": assault_serious
+  "Sexualbrott": sexual_assault
+  "Våldtäkt": sexual_assault
+  "Rån": robbery_violent
+  "Dödligt skjutvapenvåld": homicide  # categorised separately when source publishes it
+
+skip:
+  - "Stöld"
+  - "Inbrott"
+  - "Bedrägeri"
+  - "Skadegörelse"
+  - "Narkotikabrott"
+
 notes: |
-  BRÅ categories — focus on "Mord, dråp och misshandel med dödlig utgång"
-  (lethal violence), "Dödligt skjutvapenvåld" (fatal gun violence).
+  BRÅ Statistikdatabasen API (PXweb 2.0) is documented at
+  https://www.bra.se/statistik/kriminalstatistik/anmalda-brott.html.
+  Endpoint shape: https://statistik.bra.se/api/v2/sv/<TABLE_ID>
+
+  For MVP, the SE adapter probes for a manually placed file under
+  data/raw/se/<yyyy-mm>/anmalda-brott.json. Live API fetching is deferred.

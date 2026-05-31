@@ -1,5 +1,34 @@
-mapping: {}
+# Ministerio del Interior — *Balances trimestrales de criminalidad*.
+# Quarterly PDF publications with provincia-level indicators.
+#
+# Foreign-background published? Partial. Some MI tables include nationality
+# of detainees as a separate dimension; not consistent across periods.
+# For MVP we emit only suspect_dim="total".
+
+mapping:
+  # Spanish-language indicator names → harmonised category.
+  "Homicidios dolosos y asesinatos consumados": homicide
+  "Homicidios dolosos y asesinatos en grado de tentativa": attempted_homicide
+  "Lesiones por arma blanca": assault_serious
+  "Lesiones por arma de fuego": assault_serious
+  "Delitos contra la libertad sexual": sexual_assault
+  "Agresión sexual con penetración": sexual_assault
+  "Robos con violencia e intimidación": robbery_violent
+  "Robos con violencia": robbery_violent
+
+skip:
+  - "Robos con fuerza en domicilios"
+  - "Hurtos"
+  - "Estafas"
+  - "Tráfico de drogas"
+
 notes: |
-  Balances trimestrales publish indicators including "Homicidios dolosos y
-  asesinatos consumados", "Lesiones por arma blanca", "Lesiones por arma de
-  fuego". Map each to harmonised category.
+  Source: https://www.interior.gob.es/opencms/es/servicios-al-ciudadano/
+  estadisticas/. Each quarterly Balance trimestral comes as a multi-page PDF
+  with one provincia-level table per main indicator. PDFs are parsed via
+  pdfplumber.
+
+  Some indicators (lesiones por arma blanca/fuego) report attack instruments;
+  these are aggregated under assault_serious for cross-country comparability.
+  A future revision could split them into knife_offence / firearm_offence
+  harmonised categories.

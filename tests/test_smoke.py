@@ -16,14 +16,13 @@ def test_adapters_common_imports() -> None:
 def test_country_adapters_class_attrs() -> None:
     """Each MVP adapter declares country/authority/cadence at class level."""
     from adapters.de.adapter import DEAdapter
-    from adapters.dk.adapter import DKAdapter
     from adapters.es.adapter import ESAdapter
     from adapters.fr.adapter import FRAdapter
     from adapters.it.adapter import ITAdapter
     from adapters.se.adapter import SEAdapter
     from adapters.uk.adapter import UKAdapter
 
-    for cls in (UKAdapter, DEAdapter, FRAdapter, SEAdapter, DKAdapter, ESAdapter, ITAdapter):
+    for cls in (UKAdapter, DEAdapter, FRAdapter, SEAdapter, ESAdapter, ITAdapter):
         assert cls.country, f"{cls.__name__} missing country"
         assert cls.authority, f"{cls.__name__} missing authority"
         assert cls.cadence in {"monthly", "quarterly", "annual"}, f"{cls.__name__} bad cadence"

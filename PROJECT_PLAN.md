@@ -49,7 +49,6 @@ To avoid the project dying as a 30-country boil-the-ocean exercise, ship in wave
 - 🇩🇪 Germany (BKA PKS, annual; Bundesland-level; non-German suspect share published)
 - 🇬🇧 United Kingdom (data.police.uk monthly; incident-level with location; knife-crime stats by force area)
 - 🇸🇪 Sweden (BRÅ; quarterly violent crime, occasional foreign-background reports)
-- 🇩🇰 Denmark (Danmarks Statistik; country-of-origin breakdown published)
 - 🇫🇷 France (Interstats monthly; département-level; **no** foreign-background variable)
 - 🇪🇸 Spain (Ministerio del Interior, *Balances trimestrales*; provincia-level; partial nationality data on detainees)
 - 🇮🇹 Italy (ISTAT annual + Ministero dell'Interno monthly; regione / provincia-level; partial foreign-background)

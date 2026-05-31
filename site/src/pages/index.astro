@@ -1,21 +1,23 @@
 ---
 import Base from "../layouts/Base.astro";
-import ukSummary from "../data/uk_summary.json";
+import countrySummaries from "../data/country_summaries.json";
 import meta from "../data/aggregates_meta.json";
 
-interface UKRow {
+interface Row {
   region_code: string;
+  region_level: number;
   region_name: string | null;
   homicide_count: number | null;
   homicide_rate: number | null;
   violent_total_count: number | null;
   violent_total_rate: number | null;
+  assault_count: number | null;
+  assault_rate: number | null;
   population: number | null;
   period_start: string;
   period_end: string;
   source_url: string;
 }
-
 interface MetaRow {
   country: string;
   latest_period_end: string | null;
@@ -25,16 +27,31 @@ interface MetaRow {
   authority: string;
 }
 
-const uk = ukSummary as UKRow[];
-const ukMeta = (meta as MetaRow[]).find((m) => m.country === "UK");
+const summaries = countrySummaries as Record<string, Row[]>;
+const metaRows = meta as MetaRow[];
 
 const nf = new Intl.NumberFormat("en-GB");
 const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
-const periodEnd = uk[0]?.period_end?.split("T")[0] ?? "—";
-const periodLabel = periodEnd === "—"
-  ? "no data"
-  : `year ending ${new Date(periodEnd).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`;
+const ukRows = summaries["UK"] ?? [];
+const frRows = (summaries["FR"] ?? []).slice(0, 15); // top 15 départements by homicide rate
+
+function periodLabel(period_end: string | undefined): string {
+  if (!period_end) return "—";
+  const d = period_end.split("T")[0];
+  return new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+// MVP country status. Order matters — UK + FR first (live), then the rest as planned.
+const mvpStatus = [
+  { iso: "UK", name: "United Kingdom", authority: "ONS", status: "live" },
+  { iso: "FR", name: "France", authority: "SSMSI Interstats", status: "live" },
+  { iso: "DE", name: "Germany", authority: "BKA PKS", status: "scaffolded" },
+  { iso: "IT", name: "Italy", authority: "ISTAT", status: "scaffolded" },
+  { iso: "SE", name: "Sweden", authority: "BRÅ", status: "scaffolded" },
+  { iso: "ES", name: "Spain", authority: "Ministerio del Interior", status: "scaffolded" },
+];
+const liveCount = mvpStatus.filter((c) => c.status === "live").length;
 ---
 <Base>
   <section class="px-6 py-12 max-w-3xl mx-auto">
@@ -46,29 +63,68 @@ const periodLabel = periodEnd === "—"
       <a href="https://hoyodecrimen.com">hoyodecrimen.com</a>.
     </p>
     <p class="text-stone mb-6 text-sm">
-      <strong>Status:</strong> Week 2 — first country (UK) live with real ONS data.
-      Six more countries land in Week 3. The interactive map below is still a
-      placeholder; the choropleth layer arrives once a second country's data is in.
+      <strong>Status:</strong> Week 3 — {liveCount} of 6 MVP countries live with real data.
+      DE / IT / SE / ES adapters are scaffolded (region maps + category maps committed) but
+      need a live data fetch wired up. The interactive choropleth map below stays a
+      placeholder until at least 3 countries are live.
     </p>
   </section>
 
   <section class="px-6 max-w-6xl mx-auto">
     <div id="map" class="h-[55vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
     <p class="text-xs text-stone mt-2">
-      Map: OpenStreetMap raster (placeholder). The production map uses NUTS vector tiles
-      from Eurostat GISCO, served via PMTiles.
+      Map: OpenStreetMap raster (placeholder). The production map will use NUTS vector tiles
+      from Eurostat GISCO, served via PMTiles, with a choropleth shaded by homicide rate.
     </p>
   </section>
 
+  <!-- MVP status -->
   <section class="px-6 py-12 max-w-4xl mx-auto">
-    <div class="flex items-baseline justify-between mb-4">
-      <h2 class="text-2xl font-semibold">United Kingdom — recorded homicide, by NUTS-1 region</h2>
-      <span class="text-xs text-stone">{periodLabel}</span>
+    <h2 class="text-2xl font-semibold mb-4">MVP country status</h2>
+    <div class="overflow-x-auto rounded-lg border border-ink/10">
+      <table class="w-full text-sm">
+        <thead class="bg-ink/5 text-left">
+          <tr>
+            <th class="px-3 py-2 font-medium">Country</th>
+            <th class="px-3 py-2 font-medium">Source</th>
+            <th class="px-3 py-2 font-medium">Status</th>
+            <th class="px-3 py-2 font-medium text-right">Rows</th>
+            <th class="px-3 py-2 font-medium text-right">Regions</th>
+            <th class="px-3 py-2 font-medium">Latest period</th>
+          </tr>
+        </thead>
+        <tbody>
+          {mvpStatus.map((c) => {
+            const m = metaRows.find((r) => r.country === c.iso);
+            return (
+              <tr class="border-t border-ink/10 hover:bg-ink/5">
+                <td class="px-3 py-2 font-medium">{c.name} <span class="text-xs text-stone">({c.iso})</span></td>
+                <td class="px-3 py-2 text-stone">{c.authority}</td>
+                <td class="px-3 py-2">
+                  {c.status === "live" ? (
+                    <span class="inline-block px-2 py-0.5 rounded bg-rust/10 text-rust text-xs font-medium">LIVE</span>
+                  ) : (
+                    <span class="inline-block px-2 py-0.5 rounded bg-ink/10 text-stone text-xs font-medium">scaffolded</span>
+                  )}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{m ? nf.format(m.n_rows) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{m ? nf.format(m.n_regions) : "—"}</td>
+                <td class="px-3 py-2 text-stone text-xs">{m ? periodLabel(m.latest_period_end ?? undefined) : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
+  </section>
 
-    {uk.length === 0 ? (
-      <p class="text-stone">No data yet — run <code>uv run python scripts/run_adapter.py UK</code>.</p>
-    ) : (
+  <!-- UK table -->
+  {ukRows.length > 0 && (
+    <section class="px-6 pb-12 max-w-4xl mx-auto">
+      <div class="flex items-baseline justify-between mb-4">
+        <h2 class="text-2xl font-semibold">United Kingdom — homicide by NUTS-1 region</h2>
+        <span class="text-xs text-stone">year ending {periodLabel(ukRows[0].period_end)}</span>
+      </div>
       <div class="overflow-x-auto rounded-lg border border-ink/10">
         <table class="w-full text-sm">
           <thead class="bg-ink/5 text-left">
@@ -82,52 +138,84 @@ const periodLabel = periodEnd === "—"
             </tr>
           </thead>
           <tbody>
-            {uk.map((r) => (
+            {ukRows.map((r) => (
               <tr class="border-t border-ink/10 hover:bg-ink/5">
                 <td class="px-3 py-2">
                   <span class="font-medium">{r.region_name ?? r.region_code}</span>
                   <span class="text-xs text-stone ml-1">({r.region_code})</span>
                 </td>
                 <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums font-medium">
-                  {r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}
-                </td>
+                <td class="px-3 py-2 text-right tabular-nums font-medium">{r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{r.violent_total_count !== null ? nf.format(r.violent_total_count) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums">
-                  {r.violent_total_rate !== null ? rateFmt.format(r.violent_total_rate) : "—"}
-                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.violent_total_rate !== null ? rateFmt.format(r.violent_total_rate) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums text-stone">{r.population !== null ? nf.format(r.population) : "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    )}
+      <p class="text-xs text-stone mt-3">
+        Source: ONS <a href={ukRows[0].source_url}>Police force area data tables</a>. England &amp; Wales only —
+        Scotland and Northern Ireland will be added when their separate sources are wired up.
+      </p>
+    </section>
+  )}
 
-    <p class="text-xs text-stone mt-3">
-      Source: Office for National Statistics, <a href={uk[0]?.source_url}>Police force area data tables</a>.
-      ONS rolls 12 months of data per release; figures here are England &amp; Wales only — Scotland and
-      Northern Ireland publish separately and will be added later. Suspect-background dimension not
-      published by ONS for PFA totals (see <a href="/methodology">methodology</a>).
-    </p>
-  </section>
-
-  {ukMeta && (
-    <section class="px-6 pb-12 max-w-4xl mx-auto text-xs text-stone">
-      <p>
-        UK dataset: {nf.format(ukMeta.n_rows)} rows across {ukMeta.n_regions} NUTS-1 regions,
-        last refreshed {ukMeta.retrieved_at?.split("T")[0] ?? "—"} from {ukMeta.authority}.
+  <!-- France top 15 -->
+  {frRows.length > 0 && (
+    <section class="px-6 pb-12 max-w-4xl mx-auto">
+      <div class="flex items-baseline justify-between mb-4">
+        <h2 class="text-2xl font-semibold">France — top 15 départements by homicide rate</h2>
+        <span class="text-xs text-stone">year {periodLabel(frRows[0].period_end).split(" ").pop()}</span>
+      </div>
+      <div class="overflow-x-auto rounded-lg border border-ink/10">
+        <table class="w-full text-sm">
+          <thead class="bg-ink/5 text-left">
+            <tr>
+              <th class="px-3 py-2 font-medium">Département</th>
+              <th class="px-3 py-2 font-medium text-right">Homicides</th>
+              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
+              <th class="px-3 py-2 font-medium text-right">Assault</th>
+              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
+              <th class="px-3 py-2 font-medium text-right text-stone">Population</th>
+            </tr>
+          </thead>
+          <tbody>
+            {frRows.map((r) => (
+              <tr class="border-t border-ink/10 hover:bg-ink/5">
+                <td class="px-3 py-2">
+                  <span class="font-medium">{r.region_name ?? r.region_code}</span>
+                  <span class="text-xs text-stone ml-1">({r.region_code})</span>
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums font-medium">{r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.assault_count !== null ? nf.format(r.assault_count) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{r.assault_rate !== null ? rateFmt.format(r.assault_rate) : "—"}</td>
+                <td class="px-3 py-2 text-right tabular-nums text-stone">{r.population !== null ? nf.format(r.population) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-stone mt-3">
+        Source: SSMSI <a href={frRows[0].source_url}>Bases statistiques départementales (Interstats)</a>.
+        Counts are per victim ("unité de compte: Victime"). All 101 départements are in the dataset;
+        only the top 15 by homicide rate are shown here.
       </p>
     </section>
   )}
 
   <section class="px-6 py-8 max-w-3xl mx-auto">
-    <h2 class="text-2xl font-semibold mt-4 mb-2">What's coming next</h2>
+    <h2 class="text-2xl font-semibold mt-4 mb-2">What's next</h2>
     <ul class="list-disc pl-5 text-stone space-y-1">
-      <li>Germany (BKA PKS), France (Interstats), Sweden (BRÅ), Denmark (Statbank), Spain (Min. Interior), Italy (ISTAT) adapters — landing in Week 3.</li>
-      <li>Choropleth map shaded by homicide rate, with metric selector and time slider.</li>
-      <li>Incident-level pins (UK street data + monthly news extraction).</li>
-      <li>Foreign-background dimension where the official source publishes it (DE, DK, AT, sometimes SE).</li>
+      <li>DE (BKA PKS) — adapter scaffolded, Bundesland → NUTS-1 mapped. Live XLSX fetch + parse, plus the
+        <em>Nichtdeutsche Tatverdächtige</em> dimension that makes Germany the headline country for foreign-
+        background data.</li>
+      <li>IT (ISTAT) — region map done. Live SDMX dataflow ID + dimension key to be confirmed.</li>
+      <li>SE (BRÅ) — län map done. PXweb 2.0 table ID and query to be confirmed.</li>
+      <li>ES (Min. Interior) — provincia map done. PDF parsing of Balances trimestrales.</li>
+      <li>Choropleth map shaded by homicide rate once 3+ countries are live.</li>
+      <li>Tier 2: monthly news-extracted incidents (manual Claude run, $0 API spend).</li>
     </ul>
   </section>
 </Base>

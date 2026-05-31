@@ -1,2 +1,22 @@
 native_code,native_name,nuts_code,notes
-# Italian regioni → NUTS-2 / province → NUTS-3.
+ITC1,Piemonte,ITC1,
+ITC2,Valle d'Aosta,ITC2,
+ITC3,Liguria,ITC3,
+ITC4,Lombardia,ITC4,
+ITH1,Provincia Autonoma di Bolzano,ITH1,South Tyrol
+ITH2,Provincia Autonoma di Trento,ITH2,
+ITH3,Veneto,ITH3,
+ITH4,Friuli-Venezia Giulia,ITH4,
+ITH5,Emilia-Romagna,ITH5,
+ITI1,Toscana,ITI1,
+ITI2,Umbria,ITI2,
+ITI3,Marche,ITI3,
+ITI4,Lazio,ITI4,
+ITF1,Abruzzo,ITF1,
+ITF2,Molise,ITF2,
+ITF3,Campania,ITF3,
+ITF4,Puglia,ITF4,
+ITF5,Basilicata,ITF5,
+ITF6,Calabria,ITF6,
+ITG1,Sicilia,ITG1,
+ITG2,Sardegna,ITG2,

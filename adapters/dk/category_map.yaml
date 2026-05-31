@@ -1,5 +1,0 @@
-mapping: {}
-notes: |
-  Statbank tables STRAF11 (reported offences) and STRAF12 (suspects). Origin
-  dimension is "herkomst" with values like "Indvandrere", "Efterkommere", etc.
-  Document each carefully on the methodology page.

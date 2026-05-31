@@ -23,7 +23,6 @@ ADAPTERS = {
     "DE": ("adapters.de.adapter", "DEAdapter"),
     "FR": ("adapters.fr.adapter", "FRAdapter"),
     "SE": ("adapters.se.adapter", "SEAdapter"),
-    "DK": ("adapters.dk.adapter", "DKAdapter"),
     "ES": ("adapters.es.adapter", "ESAdapter"),
     "IT": ("adapters.it.adapter", "ITAdapter"),
 }

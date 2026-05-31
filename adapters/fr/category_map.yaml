@@ -1,7 +1,40 @@
-mapping: {}
+# SSMSI Interstats — `indicateur` values → harmonised crime_category.
+#
+# Confirmed against the live départemental CSV (2026-01-22 edition).
+# Foreign-background published? NO. All rows are suspect_dim="total".
+
+mapping:
+  "Homicides": homicide
+  "Tentatives d'homicide": attempted_homicide
+  "Violences physiques hors cadre familial": assault_serious
+  "Violences physiques intrafamiliales": assault_serious
+  "Violences sexuelles": sexual_assault
+  "Vols violents sans arme": robbery_violent
+  "Vols avec armes": robbery_violent
+
+skip:
+  - "Vols sans violence contre des personnes"
+  - "Cambriolages de logement"
+  - "Vols dans les véhicules"
+  - "Vols d'accessoires sur véhicules"
+  - "Vols de véhicule"
+  - "Destructions et dégradations volontaires"
+  - "Trafic de stupéfiants"
+  - "Usage de stupéfiants"
+  - "Usage de stupéfiants (AFD)"
+  - "Usage de stupéfiants (hors AFD)"
+  - "Escroqueries et fraudes aux moyens de paiement"
+
 notes: |
-  Interstats publishes ~12 indicators. We use:
-  - "Homicides" → homicide
-  - "Coups et blessures volontaires" → assault_serious
-  - "Vols violents sans arme" / "...avec arme" → robbery_violent
-  No foreign-background dimension.
+  Interstats publishes counts under `unite_de_compte` = "Victime" or "Fait".
+  We use "Victime" rows (per-victim count). For homicide categories,
+  one incident can have multiple victims; "Victime" gives the true human
+  cost.
+
+  Two Interstats indicators ("Violences physiques hors cadre familial" and
+  "Violences physiques intrafamiliales") both map to assault_serious; the
+  adapter sums them per (département, year).
+
+  Robbery sub-categories ("Vols violents sans arme", "Vols avec armes") all
+  map to robbery_violent, mirroring the UK adapter's treatment of robbery
+  as inherently violent.

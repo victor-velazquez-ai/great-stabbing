@@ -1,2 +1,22 @@
 native_code,native_name,nuts_code,notes
-# Swedish län → NUTS-3.
+01,Stockholms län,SE110,
+03,Uppsala län,SE121,
+04,Södermanlands län,SE122,
+05,Östergötlands län,SE123,
+06,Jönköpings län,SE211,
+07,Kronobergs län,SE212,
+08,Kalmar län,SE213,
+09,Gotlands län,SE214,
+10,Blekinge län,SE221,
+12,Skåne län,SE224,
+13,Hallands län,SE231,
+14,Västra Götalands län,SE232,
+17,Värmlands län,SE311,
+18,Örebro län,SE312,
+19,Västmanlands län,SE125,
+20,Dalarnas län,SE312,Dalarna NUTS-3 is in SE312 with Örebro per Eurostat NUTS 2021
+21,Gävleborgs län,SE313,
+22,Västernorrlands län,SE321,
+23,Jämtlands län,SE322,
+24,Västerbottens län,SE331,
+25,Norrbottens län,SE332,

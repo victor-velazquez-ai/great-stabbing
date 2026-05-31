@@ -1,5 +1,34 @@
-mapping: {}
+# ISTAT (Italian National Statistical Institute) — *Delitti denunciati dalle
+# forze di polizia all'autorità giudiziaria* (crimes reported to judicial
+# authority by police forces). Annual statistics.
+#
+# Foreign-background published? Partial — ISTAT publishes a "Nazionalità"
+# (nationality) dimension on some tables but not all. For MVP we emit only
+# suspect_dim="total" rows; the foreign breakdown comes in a follow-up.
+
+mapping:
+  # ISTAT Italian-language category names mapped to harmonised set.
+  # Confirmed against historical ISTAT tables; verify exact strings when
+  # the live SDMX flow is wired up.
+  "Omicidi volontari consumati": homicide
+  "Omicidi volontari tentati": attempted_homicide
+  "Lesioni dolose": assault_serious
+  "Violenze sessuali": sexual_assault
+  "Rapine": robbery_violent
+  "Tentati omicidi": attempted_homicide  # alt name in older series
+  "Omicidi": homicide                    # alt name
+
+skip:
+  - "Furti"
+  - "Furti con destrezza"
+  - "Furti in abitazione"
+  - "Truffe e frodi informatiche"
+  - "Reati legati a stupefacenti"
+  - "Estorsioni"
+
 notes: |
-  ISTAT "Delitti denunciati dalle forze di polizia all'autorità giudiziaria"
-  has fine-grained categories. Key: "Omicidi volontari", "Lesioni dolose",
-  "Rapine".
+  Source URL family: https://esploradati.istat.it/databrowser/ — SDMX
+  dataflow IDs for crime statistics need to be confirmed by querying
+  the live API. Common IDs in the past: DCCV_DELITTIPS, JUS_DELITTI.
+
+  Manual fallback documented in adapter.py if SDMX probing fails.
