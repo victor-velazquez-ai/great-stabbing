@@ -30,11 +30,25 @@ interface MetaRow {
 const summaries = countrySummaries as Record<string, Row[]>;
 const metaRows = meta as MetaRow[];
 
+// Flatten every region row into a single { region_code → rate } lookup
+// that the client-side map script can hydrate without re-importing.
+const rateByRegion: Record<string, { homicide_rate: number | null; homicide_count: number | null; region_name: string | null; country: string }> = {};
+for (const country of Object.keys(summaries)) {
+  for (const r of summaries[country]) {
+    rateByRegion[r.region_code] = {
+      homicide_rate: r.homicide_rate,
+      homicide_count: r.homicide_count,
+      region_name: r.region_name,
+      country,
+    };
+  }
+}
+
 const nf = new Intl.NumberFormat("en-GB");
 const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
 const ukRows = summaries["UK"] ?? [];
-const frRows = (summaries["FR"] ?? []).slice(0, 15); // top 15 départements by homicide rate
+const frRows = (summaries["FR"] ?? []).slice(0, 15);
 
 function periodLabel(period_end: string | undefined): string {
   if (!period_end) return "—";
@@ -42,7 +56,6 @@ function periodLabel(period_end: string | undefined): string {
   return new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
-// MVP country status. Order matters — UK + FR first (live), then the rest as planned.
 const mvpStatus = [
   { iso: "UK", name: "United Kingdom", authority: "ONS", status: "live" },
   { iso: "FR", name: "France", authority: "SSMSI Interstats", status: "live" },
@@ -63,18 +76,35 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
       <a href="https://hoyodecrimen.com">hoyodecrimen.com</a>.
     </p>
     <p class="text-stone mb-6 text-sm">
-      <strong>Status:</strong> Week 3 — {liveCount} of 6 MVP countries live with real data.
-      DE / IT / SE / ES adapters are scaffolded (region maps + category maps committed) but
-      need a live data fetch wired up. The interactive choropleth map below stays a
-      placeholder until at least 3 countries are live.
+      <strong>Status:</strong> {liveCount} of 6 MVP countries live. The choropleth below
+      is shaded by recorded-homicide rate per 100k. UK at NUTS-1 (10 regions), France at
+      NUTS-3 (101 départements). Pin layer (Tier 2 news incidents) coming online below.
     </p>
   </section>
 
   <section class="px-6 max-w-6xl mx-auto">
-    <div id="map" class="h-[55vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
+    <div class="relative">
+      <div id="map" class="h-[70vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
+      <div id="map-legend" class="absolute bottom-3 left-3 bg-bone/95 backdrop-blur p-3 rounded border border-ink/10 text-xs">
+        <div class="font-medium mb-1">Homicides / 100k / year</div>
+        <div class="flex items-center space-x-1">
+          <span class="inline-block w-4 h-3" style="background:#fef3e0"></span>
+          <span class="inline-block w-4 h-3" style="background:#fbcfa5"></span>
+          <span class="inline-block w-4 h-3" style="background:#f59557"></span>
+          <span class="inline-block w-4 h-3" style="background:#d65f1c"></span>
+          <span class="inline-block w-4 h-3" style="background:#9b2a2a"></span>
+        </div>
+        <div class="flex justify-between text-stone tabular-nums mt-1 w-[120px]">
+          <span>0</span><span>1</span><span>2</span><span>4</span><span>8+</span>
+        </div>
+        <div class="text-stone mt-1 text-[10px]">Source: ONS (UK), SSMSI (FR)</div>
+      </div>
+    </div>
     <p class="text-xs text-stone mt-2">
-      Map: OpenStreetMap raster (placeholder). The production map will use NUTS vector tiles
-      from Eurostat GISCO, served via PMTiles, with a choropleth shaded by homicide rate.
+      Map base: OpenStreetMap. Region boundaries: Eurostat NUTS 2021 (03M).
+      Hover a region for details. Red dots are individual news-extracted incidents
+      from the past month (Tier 2). Click a dot to read what the article said —
+      verbatim quotes only, never paraphrased.
     </p>
   </section>
 
@@ -154,10 +184,6 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
           </tbody>
         </table>
       </div>
-      <p class="text-xs text-stone mt-3">
-        Source: ONS <a href={ukRows[0].source_url}>Police force area data tables</a>. England &amp; Wales only —
-        Scotland and Northern Ireland will be added when their separate sources are wired up.
-      </p>
     </section>
   )}
 
@@ -197,32 +223,31 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
           </tbody>
         </table>
       </div>
-      <p class="text-xs text-stone mt-3">
-        Source: SSMSI <a href={frRows[0].source_url}>Bases statistiques départementales (Interstats)</a>.
-        Counts are per victim ("unité de compte: Victime"). All 101 départements are in the dataset;
-        only the top 15 by homicide rate are shown here.
-      </p>
     </section>
   )}
 
   <section class="px-6 py-8 max-w-3xl mx-auto">
     <h2 class="text-2xl font-semibold mt-4 mb-2">What's next</h2>
     <ul class="list-disc pl-5 text-stone space-y-1">
-      <li>DE (BKA PKS) — adapter scaffolded, Bundesland → NUTS-1 mapped. Live XLSX fetch + parse, plus the
-        <em>Nichtdeutsche Tatverdächtige</em> dimension that makes Germany the headline country for foreign-
-        background data.</li>
-      <li>IT (ISTAT) — region map done. Live SDMX dataflow ID + dimension key to be confirmed.</li>
-      <li>SE (BRÅ) — län map done. PXweb 2.0 table ID and query to be confirmed.</li>
-      <li>ES (Min. Interior) — provincia map done. PDF parsing of Balances trimestrales.</li>
-      <li>Choropleth map shaded by homicide rate once 3+ countries are live.</li>
-      <li>Tier 2: monthly news-extracted incidents (manual Claude run, $0 API spend).</li>
+      <li>First Tier 2 pin batch live (May 2026) — 9 news-extracted incidents, geocoded, scored by source confidence. Tier 1 choropleth + Tier 2 pins now share the map.</li>
+      <li>Germany goes live (BKA PKS) — manual once-a-year XLSX drop now lights up the foreign-background (Nichtdeutsche Tatverdächtige) dimension end-to-end.</li>
+      <li>Italy / Sweden / Spain wired live — region maps committed; just need URL discovery for each.</li>
+      <li>Public URL (Cloudflare Pages) — pending one-time token setup.</li>
     </ul>
   </section>
 </Base>
 
+<!-- Region → homicide rate lookup, inlined as a JSON island the module
+     script below reads. Inline JSON keeps the lookup out of the JS bundle. -->
+<script id="rate-by-region" type="application/json" set:html={JSON.stringify(rateByRegion)} />
+
 <script>
   import maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
+
+  const lookupEl = document.getElementById("rate-by-region");
+  const lookup: Record<string, { homicide_rate: number | null; homicide_count: number | null; region_name: string | null; country: string }> =
+    lookupEl ? JSON.parse(lookupEl.textContent ?? "{}") : {};
 
   const map = new maplibregl.Map({
     container: "map",
@@ -234,14 +259,164 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
           tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
           tileSize: 256,
           attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
         },
       },
       layers: [{ id: "osm", type: "raster", source: "osm" }],
     },
-    center: [10, 50],
-    zoom: 3.5,
+    center: [3, 50],
+    zoom: 4.2,
+    maxZoom: 9,
   });
 
   map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+  map.on("load", async () => {
+    const resp = await fetch("/data/regions.geojson");
+    if (!resp.ok) {
+      console.warn("regions.geojson not available", resp.status);
+      return;
+    }
+    const geo = await resp.json();
+
+    // Decorate each feature with the homicide rate from our lookup so we
+    // can drive a data-driven fill expression on a single property.
+    for (const f of geo.features) {
+      const code = f.properties?.code as string | undefined;
+      const hit = code ? lookup[code] : null;
+      f.properties = f.properties || {};
+      f.properties.homicide_rate = hit?.homicide_rate ?? null;
+      f.properties.homicide_count = hit?.homicide_count ?? null;
+      f.properties.country_iso = hit?.country ?? null;
+    }
+
+    map.addSource("regions", { type: "geojson", data: geo });
+
+    map.addLayer({
+      id: "region-fill",
+      type: "fill",
+      source: "regions",
+      paint: {
+        "fill-color": [
+          "step",
+          ["coalesce", ["get", "homicide_rate"], -1],
+          "#e0e0e0", -1,    // missing / no data
+          "#fef3e0", 0,     // 0 - 1
+          "#fbcfa5", 1,     // 1 - 2
+          "#f59557", 2,     // 2 - 4
+          "#d65f1c", 4,     // 4 - 8
+          "#9b2a2a",         // 8+
+        ],
+        "fill-opacity": 0.78,
+      },
+    });
+    map.addLayer({
+      id: "region-line",
+      type: "line",
+      source: "regions",
+      paint: { "line-color": "#0f0f0f", "line-width": 0.4, "line-opacity": 0.6 },
+    });
+
+    // ----- Tier 2 incident pins -----
+    try {
+      const ir = await fetch("/data/incidents.geojson");
+      if (ir.ok) {
+        const incidents = await ir.json();
+        map.addSource("incidents", { type: "geojson", data: incidents });
+        map.addLayer({
+          id: "incident-pins",
+          type: "circle",
+          source: "incidents",
+          paint: {
+            "circle-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              4, 4,
+              6, 6,
+              9, 9,
+            ],
+            // Fatal incidents darker / larger inner colour, non-fatal lighter.
+            "circle-color": [
+              "case",
+              [">", ["coalesce", ["get", "victim_fatal"], 0], 0],
+              "#9b2a2a",   // fatal — rust
+              "#d65f1c",   // non-fatal — orange
+            ],
+            "circle-stroke-color": "#0f0f0f",
+            "circle-stroke-width": 1,
+            "circle-opacity": [
+              "case",
+              ["==", ["get", "confidence"], "HIGH"], 0.95,
+              ["==", ["get", "confidence"], "MEDIUM"], 0.85,
+              0.7,  // LOW
+            ],
+          },
+        });
+
+        const ipop = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "320px" });
+        map.on("click", "incident-pins", (e) => {
+          const f = e.features?.[0];
+          if (!f) return;
+          const p = f.properties as any;
+          const sources = (() => {
+            try { return JSON.parse(p.sources ?? "[]"); } catch { return []; }
+          })();
+          const sourceLinks = sources.length
+            ? sources
+                .map((s: any) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.outlet ?? "source"}</a>`)
+                .join(", ")
+            : "—";
+          const fatalBadge = (p.victim_fatal ?? 0) > 0
+            ? `<span style="color:#9b2a2a;font-weight:600">FATAL</span> · `
+            : "";
+          const quote = (() => {
+            try {
+              const ss = JSON.parse(p.sources ?? "[]");
+              return ss[0]?.quote_snippet ?? "";
+            } catch { return ""; }
+          })();
+          const html = `
+            <div style="font-family:Inter,system-ui;font-size:12px;line-height:1.45;max-width:300px">
+              <div style="font-weight:600">${p.city || "(unknown)"} · ${p.country}</div>
+              <div style="color:#6b6b6b;margin-bottom:6px">
+                ${fatalBadge}weapon: ${p.weapon ?? "?"} · victims: ${p.victim_count ?? "?"} · conf: ${p.confidence ?? "?"}
+              </div>
+              ${quote ? `<div style="font-style:italic;color:#0f0f0f;border-left:3px solid #9b2a2a;padding-left:8px;margin:6px 0">${quote}</div>` : ""}
+              ${p.date_incident ? `<div style="color:#6b6b6b">Incident: ${p.date_incident}</div>` : ""}
+              <div style="color:#6b6b6b">Source: ${sourceLinks}</div>
+            </div>`;
+          ipop.setLngLat((f.geometry as any).coordinates).setHTML(html).addTo(map);
+        });
+        map.on("mouseenter", "incident-pins", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "incident-pins", () => { map.getCanvas().style.cursor = ""; });
+      }
+    } catch (err) {
+      console.warn("incidents layer skipped:", err);
+    }
+
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+    map.on("mousemove", "region-fill", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties as any;
+      const fmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+      const nfi = new Intl.NumberFormat("en-GB");
+      const rate = p.homicide_rate;
+      const count = p.homicide_count;
+      const html = `
+        <div style="font-family:Inter,system-ui;font-size:12px;line-height:1.4">
+          <div style="font-weight:600">${p.name ?? p.code}</div>
+          <div style="color:#6b6b6b">${p.country_iso ?? p.country ?? "—"} · ${p.code}</div>
+          <div style="margin-top:4px">
+            Homicide rate: <b>${rate !== null && rate !== undefined ? fmt.format(rate) : "—"}</b> / 100k<br/>
+            Homicides: ${count !== null && count !== undefined ? nfi.format(count) : "—"}
+          </div>
+        </div>`;
+      map.getCanvas().style.cursor = "pointer";
+      popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+    });
+    map.on("mouseleave", "region-fill", () => {
+      map.getCanvas().style.cursor = "";
+      popup.remove();
+    });
+  });
 </script>

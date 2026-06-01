@@ -24,6 +24,7 @@ dependencies = [
     "typer>=0.15",
     "feedparser>=6.0",
     "langdetect>=1.0",
+    "shapely>=2.0",
 ]
 
 [project.optional-dependencies]

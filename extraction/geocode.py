@@ -57,13 +57,22 @@ def _save_cache_row(country: str, city: str, lat: float | None, lon: float | Non
         w.writerow([country.upper(), city, lat or "", lon or "", nuts or ""])
 
 
+_NOMINATIM_COUNTRY_OVERRIDE = {
+    # Nominatim uses ISO 3166-1 alpha-2 lowercase. Our pipeline carries "UK"
+    # for the United Kingdom (matching ONS/the rest of our data); Nominatim's
+    # canonical alpha-2 is "gb".
+    "UK": "gb",
+}
+
+
 def _nominatim_lookup(city: str, country: str) -> tuple[float | None, float | None]:
+    cc = _NOMINATIM_COUNTRY_OVERRIDE.get(country.upper(), country.lower())
     try:
         r = requests.get(
             NOMINATIM,
             params={
                 "q": city,
-                "countrycodes": country.lower(),
+                "countrycodes": cc,
                 "format": "json",
                 "limit": 1,
             },

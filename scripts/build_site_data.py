@@ -21,8 +21,10 @@ import duckdb
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PARQUET = REPO_ROOT / "data" / "parquet" / "crime_aggregates.parquet"
+INCIDENTS_PARQUET = REPO_ROOT / "data" / "parquet" / "incidents.parquet"
 NUTS_PARQUET = REPO_ROOT / "data" / "parquet" / "nuts_regions.parquet"
 OUT_DIR = REPO_ROOT / "site" / "src" / "data"
+SITE_PUBLIC_DATA = REPO_ROOT / "site" / "public" / "data"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -146,6 +148,62 @@ def main() -> None:
     )
 
     log.info("wrote summaries (%d countries) and meta (%d rows)", len(summaries), len(meta))
+
+    # ---- incidents (Tier 2) ----
+    SITE_PUBLIC_DATA.mkdir(parents=True, exist_ok=True)
+    if INCIDENTS_PARQUET.exists():
+        # Use Python-side null handling — DuckDB COALESCE can stumble on
+        # columns whose Parquet logical type differs from expected.
+        rows = con.execute(
+            f"""
+            SELECT incident_id, country, city,
+                   lat, lon, location_precision,
+                   weapon, victim_count, victim_fatal,
+                   suspect_description_verbatim,
+                   suspect_origin_as_reported,
+                   confidence, sources_json,
+                   date_incident, date_reported
+            FROM read_parquet('{INCIDENTS_PARQUET.as_posix()}')
+            WHERE lat IS NOT NULL AND lon IS NOT NULL
+            """
+        ).fetchall()
+        cols = [
+            "incident_id", "country", "city",
+            "lat", "lon", "location_precision",
+            "weapon", "victim_count", "victim_fatal",
+            "suspect_description_verbatim", "suspect_origin_as_reported",
+            "confidence", "sources_json",
+            "date_incident", "date_reported",
+        ]
+        features = []
+        for row in rows:
+            d = dict(zip(cols, row, strict=True))
+            for k in ("date_incident", "date_reported"):
+                v = d.get(k)
+                if v is not None:
+                    d[k] = v.isoformat() if hasattr(v, "isoformat") else str(v)
+            # sources_json comes back as a string; parse for the popup.
+            try:
+                d["sources"] = json.loads(d.pop("sources_json") or "[]")
+            except Exception:
+                d["sources"] = []
+            features.append(
+                {
+                    "type": "Feature",
+                    "properties": d,
+                    "geometry": {"type": "Point", "coordinates": [d["lon"], d["lat"]]},
+                }
+            )
+        out_geo = {"type": "FeatureCollection", "features": features}
+        (SITE_PUBLIC_DATA / "incidents.geojson").write_text(
+            json.dumps(out_geo, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        )
+        log.info("wrote incidents.geojson (%d features)", len(features))
+    else:
+        # Empty placeholder so the homepage fetch doesn't 404.
+        (SITE_PUBLIC_DATA / "incidents.geojson").write_text(
+            '{"type":"FeatureCollection","features":[]}', encoding="utf-8"
+        )
 
 
 if __name__ == "__main__":
