@@ -1,73 +1,125 @@
-"""Germany adapter — BKA *Polizeiliche Kriminalstatistik* (PKS).
+"""Germany adapter — BKA *Polizeiliche Kriminalstatistik* (PKS) Zeitreihen.
 
-**Source:** Bundeskriminalamt (BKA). Annual PKS publication includes
-*Standardtabellen* (standard tables) as XLSX workbooks. Key tables we care about:
+**Source:** Bundeskriminalamt (BKA). PKS publishes annual *Zeitreihen* (time
+series) at the federal level as XLSX workbooks. Three of them carry the
+foreign-background dimension this project advertises:
 
-- **T01 / T01-OPF / T01-TV** — Übersicht, Fälle and Tatverdächtige federal totals.
-- **T62** — *Aufschlüsselung nach Bundesländern*, the state-level breakdown.
-- **T81 / T82** — *Nichtdeutsche Tatverdächtige* (non-German suspects), federal
-  totals and Bundesland-level. **This is the headline reason Germany is in the
-  MVP** — it provides the foreign-background dimension that the project's
-  methodology page calls out as distinct.
+- **T20-ZR-insg** (``T20_ZR insg``): all suspects (Tatverdächtige insgesamt)
+- **T40-ZR-insg-deutsch**: **German** suspects (deutsche Tatverdächtige)
+- **T50-ZR-insg-nichtdeutsch**: **non-German** suspects (nichtdeutsche
+  Tatverdächtige) — the *Nichtdeutsche Tatverdächtige* dimension that makes
+  Germany the headline country at MVP
 
-**Foreign-background published?** **YES** — emitted as
-``suspect_dim ∈ {"total", "national", "foreign"}`` rows.
+Plus optional T01 for federal cases (Fälle).
+
+**Granularity:** NUTS-0 (Germany as a whole). The Bundesländer breakdown
+(T62, T81, T82) lives behind a 303-redirect protection layer that requires
+JS-rendered nav we can't run from a script — that's a separate annual
+manual drop. For MVP, federal-level with the foreign-background dimension
+is the bigger win.
 
 **Cadence:** annual, released ~late April / early May.
 
-## Why discover() is manual-only at MVP
+**URLs probed and confirmed working (PKS 2024 release, 2025-03-19 / 04-23):**
+``https://www.bka.de/SharedDocs/Downloads/DE/Publikationen/PolizeilicheKriminalstatistik/2024/Interpretation/Tatverdaechtige/<file>.xlsx?__blob=publicationFile&v=N``
 
-BKA's PKS portal at bka.de is a server-rendered Government Site Builder
-installation. The XLSX downloads live under
-``/SharedDocs/Downloads/DE/Publikationen/PolizeilicheKriminalstatistik/<year>/Standardtabellen/<file>.xlsx``
-behind a 303-redirect protection layer that requires a ``v=<N>`` cache-buster
-that changes per publish. The actual URLs are linked from JavaScript-rendered
-nav menus, not from plain HTML — so neither ``curl`` nor lightweight scrapers
-can discover them without a real browser.
-
-A future hardening could use Playwright to navigate the PKS Tabellen pages,
-but for an annual data source the cost/benefit favours a manual once-a-year
-download. See ``docs/adding-a-country.md`` for the recipe.
-
-## Workflow when the file is placed manually
-
-1. Download the latest PKS Standardtabellen from the BKA page above. The file
-   we want is typically named ``standardtabellenFaelle.xlsx`` and contains
-   tables T01 through T80. For the non-German-suspect dimension, also
-   download ``standardtabellenTV.xlsx`` (T81/T82).
-2. Place at::
-
-       data/raw/de/<yyyy-mm>/pks-faelle.xlsx
-       data/raw/de/<yyyy-mm>/pks-tv.xlsx
-
-3. Run::
-
-       uv run python scripts/run_adapter.py DE
-
-   The adapter probes ``data/raw/de/**`` for either filename.
+Each year's release republishes with a new ``v=N`` cache-buster. We probe
+the Zeitreihen catalog page to discover the latest version (rather than
+hard-coding the v=N).
 """
 
 from __future__ import annotations
 
-import hashlib
 import logging
-from datetime import date, datetime, timezone
+import re
+from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from adapters.common.base import Adapter, SourceFile
-from adapters.common.nuts import load_region_map, population
+from adapters.common.http import fetch_to_raw
+from adapters.common.nuts import population
 
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DE_DIR = REPO_ROOT / "adapters" / "de"
 
-PKS_LANDING = (
+# Page that lists every PKS Zeitreihen XLSX with its current ?v=N suffix.
+ZEITREIHEN_INDEX = (
     "https://www.bka.de/DE/AktuelleInformationen/StatistikenLagebilder/"
-    "PolizeilicheKriminalstatistik/pks_node.html"
+    "PolizeilicheKriminalstatistik/PKS2024/PKSTabellen/Zeitreihen/zeitreihen_node.html"
 )
+BKA_BASE = "https://www.bka.de"
+
+# Filenames (URL-encoded as published) we care about — federal totals + the
+# Tatverdächtige insgesamt / deutsche / nichtdeutsche split.
+ZR_FILES: dict[str, tuple[str, str]] = {
+    # local-filename  ->  (filename-pattern, suspect_dim)
+    "T20-tv-insg.xlsx":            ("ZR-TV-01-T20-TV-insg",          "total"),
+    "T40-tv-deutsch.xlsx":         ("ZR-TV-04-T40-TV-insg-deutsch",  "national"),
+    "T50-tv-nichtdeutsch.xlsx":    ("ZR-TV-07-T50-TV-insg-nichtdeutsch", "foreign"),
+}
+
+# PKS Straftatenschlüssel → harmonised crime category.
+# Source: BKA Schlüsselverzeichnis 2024. 6-digit codes (BKA's full encoding).
+# Picks are deliberately narrow — the umbrella "892000 Gewaltkriminalität"
+# already aggregates many sub-categories; we don't double-count by also
+# emitting its children. For each harmonised category we map a single
+# leaf-most code to keep counts comparable.
+SCHLUESSEL_TO_CATEGORY: dict[str, str] = {
+    "892000": "violent_total",     # Gewaltkriminalität — top-level umbrella
+    "010000": "homicide",          # Mord
+    "020000": "homicide",          # Totschlag
+    "110000": "sexual_assault",    # Vergewaltigung u. sexuelle Nötigung
+    "210000": "robbery_violent",   # Raub, räuberische Erpressung
+    "222000": "assault_serious",   # Gefährliche und schwere Körperverletzung
+    # (note: 221000 = Körperverletzung mit Todesfolge is a much narrower
+    #  sub-category covering only fatal-outcome assault — not used here.)
+}
+
+
+@dataclass(frozen=True)
+class _ZRFile:
+    local_filename: str
+    suspect_dim: str
+    discovered_url: str
+
+
+def _discover_zr_urls() -> dict[str, _ZRFile]:
+    """Scrape the Zeitreihen index page for the current XLSX URLs (with v=N)."""
+    try:
+        r = requests.get(
+            ZEITREIHEN_INDEX,
+            timeout=30,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        r.raise_for_status()
+    except Exception as e:  # noqa: BLE001
+        log.warning("[DE] failed to fetch Zeitreihen index: %s", e)
+        return {}
+
+    html = r.text
+    out: dict[str, _ZRFile] = {}
+    for local_name, (pattern, suspect_dim) in ZR_FILES.items():
+        # The href in the page is URL-encoded; match by the pattern at the
+        # start of the basename and capture everything up to the closing quote.
+        m = re.search(
+            rf'href="(/SharedDocs/Downloads/DE/[^"]*{re.escape(pattern)}[^"]*\.xlsx[^"]*)"',
+            html,
+        )
+        if not m:
+            continue
+        href = m.group(1).replace("&amp;", "&")
+        out[local_name] = _ZRFile(
+            local_filename=local_name,
+            suspect_dim=suspect_dim,
+            discovered_url=BKA_BASE + href,
+        )
+    return out
 
 
 class DEAdapter(Adapter):
@@ -75,14 +127,36 @@ class DEAdapter(Adapter):
     authority = "BKA"
     cadence = "annual"
 
-    # Filename patterns we look for when discovering manually-dropped files.
-    # The first match per pattern wins.
-    FALLBACK_PATTERNS = ("pks-faelle.xlsx", "pks-tv.xlsx", "standardtabellen*.xlsx")
-
     def discover(self) -> list[SourceFile]:
+        urls = _discover_zr_urls()
+        if not urls:
+            log.error(
+                "[DE] could not discover BKA PKS Zeitreihen XLSX URLs. "
+                "Manual fallback: download from %s and place under "
+                "data/raw/de/<yyyy-mm>/ with filenames "
+                "T20-tv-insg.xlsx, T40-tv-deutsch.xlsx, T50-tv-nichtdeutsch.xlsx.",
+                ZEITREIHEN_INDEX,
+            )
+            return self._discover_manual_fallback()
+
         srcs: list[SourceFile] = []
-        for pattern in self.FALLBACK_PATTERNS:
-            for candidate in (REPO_ROOT / "data" / "raw" / "de").rglob(pattern):
+        for local_name, info in urls.items():
+            try:
+                src = fetch_to_raw(info.discovered_url, country="de", filename=local_name)
+            except Exception as e:  # noqa: BLE001
+                log.warning("[DE] %s failed: %s", local_name, e)
+                continue
+            srcs.append(src)
+            log.info("[DE] discovered %s (%s)", local_name, src.sha256[:12])
+        return srcs
+
+    def _discover_manual_fallback(self) -> list[SourceFile]:
+        srcs: list[SourceFile] = []
+        import hashlib
+        from datetime import datetime, timezone
+
+        for name in ZR_FILES.keys():
+            for candidate in (REPO_ROOT / "data" / "raw" / "de").rglob(name):
                 srcs.append(
                     SourceFile(
                         url="manual",
@@ -91,217 +165,124 @@ class DEAdapter(Adapter):
                         sha256=hashlib.sha256(candidate.read_bytes()).hexdigest(),
                     )
                 )
-        if not srcs:
-            log.error(
-                "[DE] no BKA PKS file found under data/raw/de/. "
-                "Manual fallback: download from %s and place at "
-                "data/raw/de/<yyyy-mm>/pks-faelle.xlsx (and pks-tv.xlsx if "
-                "you want the Nichtdeutsche Tatverdächtige dimension).",
-                PKS_LANDING,
-            )
         return srcs
 
     def parse(self, src: SourceFile) -> pd.DataFrame:
-        """Parse a BKA PKS XLSX file, returning a long-form DataFrame.
+        """Parse one BKA Zeitreihe XLSX → long DataFrame.
 
-        BKA workbooks layout one table per sheet. Each sheet has:
-          - A title block (1–6 rows of metadata)
-          - A header row introducing offence/Bundesland labels
-          - Data rows keyed by Schluessel (6-digit offence code) and Bundesland
-            number (01–16 per region_map.csv).
+        Output: ``schluessel, straftat, jahr, count, suspect_dim``.
 
-        We look for sheets matching ``T62*`` (Bundesländer aggregation) and
-        ``T81*`` / ``T82*`` (Nichtdeutsche Tatverdächtige). Other sheets are
-        ignored. The output is long-format with:
-          ``sheet, schluessel, schluessel_label, bundesland_native, count,
-            suspect_dim, suspect_dim_value``.
-
-        Because the BKA layouts change subtly each publication year, this
-        parser is intentionally lenient: it scans for known label columns
-        rather than relying on fixed cell positions. When the parser can't
-        find a known table family, it logs and skips.
+        BKA layout: row 5 has the column headers, rows 6-10 are spurious
+        header rows (age band names, numeric column labels), data starts
+        at row 11. Column 3 is "Tatverdächtige insgesamt" (total suspects
+        for that offence/year).
         """
         path = REPO_ROOT / src.local_path
-        log.info("[DE] parsing %s", path.relative_to(REPO_ROOT))
+        filename = path.name
+
+        # Determine which suspect dim this file carries.
+        info = ZR_FILES.get(filename)
+        suspect_dim = info[1] if info else self._guess_dim_from_filename(filename)
+        log.info("[DE] parsing %s as suspect_dim=%r", path.relative_to(REPO_ROOT), suspect_dim)
 
         xl = pd.ExcelFile(path)
-        bundeslaender = self._load_bundesland_map()
-        bundesland_names_lc = {v.strip().lower() for v in bundeslaender.values()}
+        # Sheet is "T20_ZR insg", "T40_ZR insg", "T50_ZR insg".
+        sheet = next((s for s in xl.sheet_names if "ZR" in s), xl.sheet_names[0])
 
-        out_rows: list[dict] = []
+        # Read with header=5 to get Schlüssel/Straftat/Jahr/insg, then drop
+        # the next ~4 rows which are sub-headers.
+        df = pd.read_excel(xl, sheet_name=sheet, header=5, dtype=object)
+        # Force the canonical first 4 columns.
+        df = df.rename(columns={df.columns[0]: "schluessel", df.columns[1]: "straftat",
+                                df.columns[2]: "jahr", df.columns[3]: "count"})
 
-        for sheet in xl.sheet_names:
-            sheet_clean = sheet.strip().upper()
-            # Only attempt tables that look like Bundesländer breakdown or
-            # Nichtdeutsche Tatverdächtige.
-            if not (
-                sheet_clean.startswith("T62")
-                or sheet_clean.startswith("T81")
-                or sheet_clean.startswith("T82")
-            ):
-                continue
+        # Keep only rows whose Schlüssel is a 6-digit numeric string.
+        # BKA Schlüsselverzeichnis uses 6 digits (xxxxxx); the first non-data
+        # rows have Schlüssel='------' (cross-offence total marker) and the
+        # very first row is a numeric column-position marker (1, 2, 3...).
+        df = df.dropna(subset=["schluessel"])
+        df["schluessel"] = df["schluessel"].astype(str).str.strip()
+        df = df[df["schluessel"].str.match(r"^\d{6}$")]
 
-            log.info("[DE] scanning sheet %r", sheet)
-            raw = pd.read_excel(xl, sheet_name=sheet, header=None, dtype=object)
-            if raw.empty:
-                continue
+        df["jahr"] = pd.to_numeric(df["jahr"], errors="coerce")
+        df = df.dropna(subset=["jahr"])
+        df["jahr"] = df["jahr"].astype(int)
+        df["count"] = pd.to_numeric(df["count"], errors="coerce").fillna(0).astype(int)
+        df["straftat"] = df["straftat"].astype(str).str.strip()
+        df["suspect_dim"] = suspect_dim
 
-            # Locate the first row whose first non-empty cell is a 6-digit
-            # numeric Schlüssel — that's the data start.
-            data_start = None
-            for i, row in raw.iterrows():
-                first = row.dropna().head(1)
-                if first.empty:
-                    continue
-                v = str(first.iloc[0]).strip()
-                if v.isdigit() and len(v) == 6:
-                    data_start = i
-                    break
-            if data_start is None:
-                log.info("[DE] no Schluessel rows in %r — skipping", sheet)
-                continue
-
-            # Header row is one above data_start, but BKA often has multi-row
-            # headers; we re-read with header=row-above as a heuristic.
-            header_row = max(0, int(data_start) - 1)
-            df = pd.read_excel(xl, sheet_name=sheet, header=header_row, dtype=object)
-            cols = [str(c).strip() for c in df.columns]
-            df.columns = cols
-
-            # We expect columns named something like
-            #   "Schlüssel" or "Schluessel", "Straftat", and one column per
-            # Bundesland (with state names or codes as headers).
-            schluessel_col = next(
-                (c for c in cols if c.lower().startswith("schl")), cols[0]
-            )
-            label_candidates = [c for c in cols if "straftat" in c.lower()]
-            label_col = label_candidates[0] if label_candidates else cols[1]
-
-            # Bundesland columns: those whose header matches a known native
-            # name (case-insensitive).
-            bundesland_cols = [
-                c for c in cols if c.strip().lower() in bundesland_names_lc
-            ]
-            if not bundesland_cols:
-                log.info("[DE] no Bundesland columns in %r — skipping", sheet)
-                continue
-
-            # Suspect dim for this sheet.
-            if sheet_clean.startswith("T62"):
-                suspect_dim = "total"
-            else:
-                suspect_dim = "foreign"  # T81/T82 = Nichtdeutsche Tatverdächtige
-
-            # Melt long.
-            keep_cols = [schluessel_col, label_col, *bundesland_cols]
-            sub = df[keep_cols].dropna(subset=[schluessel_col])
-            sub = sub.rename(
-                columns={schluessel_col: "schluessel", label_col: "schluessel_label"}
-            )
-            sub["schluessel"] = sub["schluessel"].astype(str).str.strip()
-            sub = sub[sub["schluessel"].str.match(r"^\d{6}$")]
-            long = sub.melt(
-                id_vars=["schluessel", "schluessel_label"],
-                value_vars=bundesland_cols,
-                var_name="bundesland_native",
-                value_name="count",
-            )
-            long["count"] = pd.to_numeric(long["count"], errors="coerce")
-            long = long.dropna(subset=["count"])
-            long["count"] = long["count"].astype(int)
-            long["sheet"] = sheet
-            long["suspect_dim"] = suspect_dim
-            out_rows.append(long)
-
-        if not out_rows:
-            log.warning("[DE] no T62/T81/T82 data extracted from %s", path.name)
-            return pd.DataFrame()
-
-        df = pd.concat(out_rows, ignore_index=True)
         log.info(
-            "[DE] parsed %d rows across %d sheets, %d offence codes",
-            len(df), df["sheet"].nunique(), df["schluessel"].nunique()
+            "[DE] %s → %d rows (%d Schlüssel × %d years), dim=%s",
+            filename, len(df), df["schluessel"].nunique(),
+            df["jahr"].nunique(), suspect_dim,
         )
-        return df
+        return df[["schluessel", "straftat", "jahr", "count", "suspect_dim"]].reset_index(drop=True)
+
+    @staticmethod
+    def _guess_dim_from_filename(filename: str) -> str:
+        f = filename.lower()
+        if "nichtdeutsch" in f:
+            return "foreign"
+        if "deutsch" in f:
+            return "national"
+        return "total"
 
     def normalise(self, df: pd.DataFrame, src: SourceFile) -> pd.DataFrame:
+        """Map Schlüssel → harmonised category; emit one row per (category, dim) for the latest year."""
         if df.empty:
             return df
 
-        # Native PKS Schlüssel → harmonised category. Curated subset for MVP;
-        # the full PKS Schlüsselverzeichnis has ~600 codes but only a handful
-        # are violent-bodily-harm offences in our scope.
-        # Source: BKA Schlüsselverzeichnis 2024.
-        schluessel_to_category = {
-            "010000": "homicide",        # Mord und Totschlag (collected)
-            "020000": "homicide",        # Tötung in Tateinheit ...
-            "892000": "violent_total",   # Gewaltkriminalität (umbrella metric)
-            "892100": "homicide",        # Mord, Totschlag, Tötung auf Verlangen
-            "892200": "sexual_assault",  # Vergewaltigung u. besondere Fälle
-            "892300": "robbery_violent", # Raubdelikte
-            "892400": "assault_serious", # Gefährliche/schwere KV
-            "892500": "assault_serious", # Erpresserische Menschenraub etc.
-        }
-
-        bundesland_map = self._reverse_bundesland_map()
-
         df = df.copy()
-        df["category"] = df["schluessel"].map(schluessel_to_category)
+        df["category"] = df["schluessel"].map(SCHLUESSEL_TO_CATEGORY)
         df = df.dropna(subset=["category"])
-        df["nuts"] = df["bundesland_native"].str.strip().str.lower().map(bundesland_map)
-        df = df.dropna(subset=["nuts"])
+
+        latest_year = int(df["jahr"].max())
+        df = df[df["jahr"] == latest_year]
 
         agg = (
-            df.groupby(["nuts", "category", "suspect_dim"], as_index=False)
+            df.groupby(["category", "suspect_dim"], as_index=False)
             .agg(
                 count=("count", "sum"),
                 native_examples=(
-                    "schluessel_label",
+                    "straftat",
                     lambda s: ", ".join(sorted({str(x) for x in s})[:3]),
                 ),
             )
         )
 
-        # PKS publications are released in spring for the prior calendar year.
-        # We stamp the period as the prior year. We use the source's mtime if
-        # discoverable, else current year - 1.
-        local_path = REPO_ROOT / src.local_path
-        try:
-            mtime_year = datetime.fromtimestamp(local_path.stat().st_mtime).year
-        except OSError:
-            mtime_year = datetime.now(timezone.utc).year
-        period_year = mtime_year - 1
-
         retrieved_at = pd.Timestamp.now(tz="UTC").tz_localize(None)
-        rows = []
+        pop_de = population("DE")  # NUTS-0 Germany population
+
+        rows: list[dict] = []
         for _, r in agg.iterrows():
-            nuts = str(r["nuts"])
-            pop = population(nuts)
             count = int(r["count"])
-            rate = (count / pop * 100_000) if pop else None
+            rate = (count / pop_de * 100_000) if pop_de else None
             rows.append(
                 {
                     "source_country": "DE",
                     "source_authority": self.authority,
-                    "source_url": PKS_LANDING,
+                    "source_url": ZEITREIHEN_INDEX,
                     "source_file_hash": src.sha256,
                     "retrieved_at": retrieved_at,
-                    "period_start": pd.Timestamp(date(period_year, 1, 1)),
-                    "period_end": pd.Timestamp(date(period_year, 12, 31)),
+                    "period_start": pd.Timestamp(date(latest_year, 1, 1)),
+                    "period_end": pd.Timestamp(date(latest_year, 12, 31)),
                     "period_type": "year",
-                    "region_code": nuts,
-                    "region_level": 1,
+                    "region_code": "DE",
+                    "region_level": 0,
                     "crime_category": str(r["category"]),
                     "crime_category_native": str(r["native_examples"]),
                     "suspect_dim": str(r["suspect_dim"]),
                     "suspect_dim_value": None,
                     "count": count,
-                    "denominator_population": pop,
-                    "denominator_source": "Eurostat / ONS-style estimate" if pop else None,
+                    "denominator_population": pop_de,
+                    "denominator_source": "Eurostat NUTS 2021" if pop_de else None,
                     "rate_per_100k": rate,
                     "notes": (
-                        "BKA PKS. T81/T82 (Nichtdeutsche Tatverdächtige) emit "
-                        "suspect_dim='foreign'; T62 emits suspect_dim='total'."
+                        "BKA PKS Zeitreihen (federal-level). T20 → total, "
+                        "T40 → national (deutsche Tatverdächtige), "
+                        "T50 → foreign (Nichtdeutsche Tatverdächtige). "
+                        "Bundesländer-level requires the deeper Standardtabellen, "
+                        "wired as a manual drop only."
                     ),
                 }
             )
@@ -311,21 +292,9 @@ class DEAdapter(Adapter):
             out["count"] = out["count"].astype(int)
             out["region_level"] = out["region_level"].astype(int)
             out["denominator_population"] = out["denominator_population"].astype("Int64")
+
         log.info(
-            "[DE] normalised %d rows across %d Bundesländer, %d (cat, dim) combos",
-            len(out), out["region_code"].nunique() if not out.empty else 0,
-            len(agg),
+            "[DE] normalised %d rows (year %d) for suspect_dim=%s",
+            len(out), latest_year, df["suspect_dim"].iloc[0] if len(df) else "?"
         )
         return out
-
-    # ---- helpers -----------------------------------------------------
-
-    def _load_bundesland_map(self) -> dict[str, str]:
-        df = pd.read_csv(DE_DIR / "region_map.csv", dtype=str, comment="#").fillna("")
-        return dict(zip(df["native_code"], df["native_name"], strict=True))
-
-    def _reverse_bundesland_map(self) -> dict[str, str]:
-        """lower-cased native_name → NUTS code."""
-        nm = load_region_map("DE")  # native_code → nuts_code
-        slugs = self._load_bundesland_map()
-        return {slugs[code].strip().lower(): nuts for code, nuts in nm.items() if code in slugs}

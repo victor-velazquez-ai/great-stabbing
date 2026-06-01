@@ -1,4 +1,21 @@
 {
+  "DE": [
+    {
+      "region_code": "DE",
+      "region_level": 0,
+      "homicide_count": 2892,
+      "homicide_rate": 3.4602763387213296,
+      "violent_total_count": 197347,
+      "violent_total_rate": 236.1255721361128,
+      "assault_count": 158432,
+      "assault_rate": 189.56379699042108,
+      "population": 83577140,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://www.bka.de/DE/AktuelleInformationen/StatistikenLagebilder/PolizeilicheKriminalstatistik/PKS2024/PKSTabellen/Zeitreihen/zeitreihen_node.html",
+      "region_name": "Deutschland"
+    }
+  ],
   "FR": [
     {
       "region_code": "FRY30",
@@ -1831,6 +1848,23 @@
       "period_end": "2024-12-31T00:00:00",
       "source_url": "https://esploradati.istat.it/SDMXWS/rest/data/73_230_DF_DCCV_AUTVITTPS_6/?format=csv&dimensionAtObservation=AllDimensions",
       "region_name": "Provincia Autonoma di Trento"
+    }
+  ],
+  "SE": [
+    {
+      "region_code": "SE",
+      "region_level": 0,
+      "homicide_count": 437,
+      "homicide_rate": 4.142180094786729,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 92535,
+      "assault_rate": 877.1090047393366,
+      "population": 10550000,
+      "period_start": "2025-01-01T00:00:00",
+      "period_end": "2025-12-31T00:00:00",
+      "source_url": "https://bra.se/download/18.11dab50419d723e44d315606/1776153587771/10La_anm_10_ar.xlsx",
+      "region_name": "Sverige"
     }
   ],
   "UK": [

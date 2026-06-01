@@ -30,10 +30,15 @@ URL = (
 LOCAL = NUTS_DIR / "NUTS_RG_03M_2021_4326.geojson"
 
 # Per-country filter: keep these (country, level) combos.
+# Mixed-level is intentional — adapters publish at the granularity their
+# source supports. NUTS-0 countries (DE, SE) get rendered as a single
+# country-wide polygon shaded by the national rate.
 KEEP = {
     ("UK", 1),
     ("FR", 3),
     ("IT", 2),
+    ("DE", 0),
+    ("SE", 0),
 }
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
