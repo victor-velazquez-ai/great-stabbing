@@ -1,26 +1,275 @@
 ---
 import Base from "../layouts/Base.astro";
+import meta from "../data/aggregates_meta.json";
+
+interface MetaRow {
+  country: string;
+  latest_period_end: string | null;
+  retrieved_at: string | null;
+  n_rows: number;
+  n_regions: number;
+  authority: string;
+}
+const metaRows = meta as MetaRow[];
+const liveCountries = new Set(metaRows.map((m) => m.country));
+
+const countryDetail: Array<{
+  iso: string;
+  name: string;
+  source: string;
+  cadence: string;
+  granularity: string;
+  fb: "yes" | "partial" | "no";
+  fb_label: string;
+  note: string;
+}> = [
+  {
+    iso: "UK",
+    name: "United Kingdom",
+    source: "ONS Police Force Area data tables",
+    cadence: "Quarterly (rolling 12-month)",
+    granularity: "NUTS-1 (force areas aggregated to ITL-1)",
+    fb: "no",
+    fb_label: "Not published for PFA totals.",
+    note: "Coverage: England & Wales only. Police Scotland and PSNI publish separately and will be added later.",
+  },
+  {
+    iso: "FR",
+    name: "France",
+    source: "SSMSI Interstats — Bases statistiques départementales",
+    cadence: "Annual (released January, rolling history from 2016)",
+    granularity: "NUTS-3 (101 départements + 5 DOM)",
+    fb: "no",
+    fb_label: "Not published.",
+    note: 'Counts are per-victim ("unité de compte: Victime") for direct comparability with ONS.',
+  },
+  {
+    iso: "IT",
+    name: "Italy",
+    source: "ISTAT — Delitti violenti per regione (dataflow 73_230_DF_DCCV_AUTVITTPS_6)",
+    cadence: "Annual (released Q4)",
+    granularity: "NUTS-2 (20 regions + Bolzano/Trento)",
+    fb: "partial",
+    fb_label: "A sibling dataflow (AUTVITTPS_5) publishes by citizenship. Not yet integrated — coming in a follow-up.",
+    note: "ISTAT uses NUTS-2013 region codes (ITD*, ITE*). We map ISTAT-native → NUTS-2021 in adapters/it/region_map.csv.",
+  },
+  {
+    iso: "DE",
+    name: "Germany",
+    source: "BKA Polizeiliche Kriminalstatistik (PKS)",
+    cadence: "Annual (released late April / early May)",
+    granularity: "NUTS-1 (16 Bundesländer)",
+    fb: "yes",
+    fb_label: 'Yes — Nichtdeutsche Tatverdächtige (non-German suspects), via PKS T81/T82. We emit suspect_dim="foreign" rows alongside suspect_dim="total".',
+    note: "Live fetcher is manual-fallback only (BKA's portal requires JS-rendered nav and per-publish version cache-busters). Once a year, download standardtabellenFaelle.xlsx and standardtabellenTV.xlsx into data/raw/de/. Adapter parses both.",
+  },
+  {
+    iso: "SE",
+    name: "Sweden",
+    source: "BRÅ Statistikdatabasen (PXweb 2.0)",
+    cadence: "Quarterly",
+    granularity: "NUTS-3 (21 län)",
+    fb: "partial",
+    fb_label: "Occasionally, in special reports. Main database does not include it.",
+    note: "Adapter scaffolded; PXweb table ID still needs confirmation.",
+  },
+  {
+    iso: "ES",
+    name: "Spain",
+    source: "Ministerio del Interior — Balances trimestrales",
+    cadence: "Quarterly",
+    granularity: "NUTS-3 (52 provincias incl. Ceuta + Melilla)",
+    fb: "partial",
+    fb_label: "Nationality of detainees appears in some MI tables but not consistently.",
+    note: "Adapter scaffolded; PDF parsing of quarterly Balance PDFs not yet wired live.",
+  },
+];
+
+function fmt(dt: string | null | undefined): string {
+  if (!dt) return "—";
+  const d = dt.split("T")[0];
+  return new Date(d).toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "2-digit" });
+}
 ---
 <Base title="Methodology — The Great Stabbing">
-  <section class="px-6 py-12 max-w-3xl mx-auto prose">
-    <h1 class="text-3xl font-semibold mb-4">Methodology</h1>
+  <article class="px-6 py-12 max-w-3xl mx-auto prose prose-sm">
+    <h1 class="text-3xl font-semibold mb-2">Methodology</h1>
     <p class="text-stone">
-      Full methodology document lives in the repo at
-      <a href="https://github.com/victor-velazquez-ai/great-stabbing/blob/main/docs/methodology.md">
-        docs/methodology.md</a>.
+      This page documents how every figure on the site is derived, what we display
+      vs. what we hold back, and the editorial rules we follow.
     </p>
-    <p class="text-stone mt-4">
-      Headline rules:
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Two data tiers, kept apart</h2>
+    <p class="text-stone">
+      The project carries two layers of crime data that we deliberately do not mix:
     </p>
-    <ul class="list-disc pl-5 text-stone space-y-2 mt-2">
-      <li>Show only what the official source publishes. No imputation, ever.</li>
-      <li>The foreign-background variable is shown only where the source publishes it
-        (DE BKA, DK Statbank, AT BMI, occasional SE BRÅ). Always with absolute counts
-        AND rates per 100k of the relevant population group.</li>
-      <li>News-extracted incidents are illustrative pins, never aggregated into rates.</li>
-      <li>Suspect descriptions are verbatim quotes from sources. Nationality fields are
-        filled only when an article explicitly states them.</li>
-      <li>No names of victims or suspects appear on the map.</li>
+    <ul class="list-disc pl-5 text-stone space-y-2">
+      <li>
+        <b>Tier 1 — Official statistics.</b> Police-recorded crime counts published by
+        each country's official authority (e.g. ONS, SSMSI, BKA, ISTAT, BRÅ, Min. Interior).
+        These are aggregated by region (NUTS-1, NUTS-2 or NUTS-3 depending on the source)
+        and time period (year, quarter, or month). The choropleth on the homepage is
+        Tier 1 only.
+      </li>
+      <li>
+        <b>Tier 2 — News-extracted incidents.</b> Individual events extracted from
+        regional news media via a monthly pipeline (fetch → keyword filter → LLM
+        extraction → dedupe → geocode → score). The red pins on the homepage map are
+        Tier 2 only. <b>News pins are illustrative; we never aggregate them into rates.</b>
+        Coverage of crime varies enormously by outlet, country, and language — using
+        news as a denominator is junk methodology.
+      </li>
     </ul>
-  </section>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Harmonised crime categories</h2>
+    <p class="text-stone">Each country reports crime in its own way. We map every native category into one of eight:</p>
+    <table class="text-sm w-full">
+      <thead class="text-left"><tr><th>Code</th><th>Definition</th></tr></thead>
+      <tbody class="text-stone">
+        <tr><td><code>homicide</code></td><td>Completed intentional killing.</td></tr>
+        <tr><td><code>attempted_homicide</code></td><td>Attempted killing where the victim survived.</td></tr>
+        <tr><td><code>knife_offence</code></td><td>Offence with a knife or sharp object.</td></tr>
+        <tr><td><code>firearm_offence</code></td><td>Offence with a firearm.</td></tr>
+        <tr><td><code>sexual_assault</code></td><td>Sexual assault, including rape.</td></tr>
+        <tr><td><code>robbery_violent</code></td><td>Robbery involving violence or threat thereof.</td></tr>
+        <tr><td><code>assault_serious</code></td><td>Grievous bodily harm short of homicide.</td></tr>
+        <tr><td><code>violent_total</code></td><td>Catch-all violent-crime total as reported.</td></tr>
+      </tbody>
+    </table>
+    <p class="text-stone mt-2">
+      Each row in <code>crime_aggregates.parquet</code> carries both the harmonised category
+      and the source's own term in <code>crime_category_native</code>. The native term is
+      authoritative when there is any doubt.
+    </p>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Foreign-background variable</h2>
+    <p class="text-stone">
+      This is the variable the project takes most seriously. <b>Rules, no exceptions:</b>
+    </p>
+    <ol class="list-decimal pl-5 text-stone space-y-2">
+      <li><b>Show only what the source publishes.</b> No imputation. No inference from
+        names, descriptions, or location.</li>
+      <li><b>Use the source's terminology</b>, with a definition link per country:
+        Germany's <em>Nichtdeutsche Tatverdächtige</em>, Austria's
+        <em>Nichtösterreichische Tatverdächtige</em>, Denmark's <em>herkomst</em>,
+        Sweden's <em>utländsk bakgrund</em> — these are not interchangeable terms and
+        each country's methodology page links the official definition.</li>
+      <li><b>Always show absolute counts AND rates per 100k</b> of the relevant
+        population group. Absolute counts in isolation mislead.</li>
+      <li><b>Statistics are on suspects, not convictions.</b> We say so on every chart.</li>
+      <li>If a country (France, UK, Spain general PFA totals) does not publish the
+        variable, the panel shows a clear <em>"not published by [source]"</em> tag —
+        never blank, never zero, never imputed.</li>
+    </ol>
+    <p class="text-stone mt-2">
+      For news-extracted pins, <code>suspect_origin_as_reported</code> is filled ONLY
+      when the article text explicitly states nationality, country of origin, residence
+      status, or asylum status. It is never inferred from names. Suspect descriptions
+      are verbatim quotes in the original language.
+    </p>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Per-country data sources and disclosures</h2>
+    <div class="space-y-6 mt-4">
+      {countryDetail.map((c) => {
+        const m = metaRows.find((r) => r.country === c.iso);
+        const isLive = liveCountries.has(c.iso);
+        return (
+          <div class="border border-ink/10 rounded p-4">
+            <div class="flex items-baseline justify-between">
+              <h3 class="text-xl font-semibold mb-1">{c.name} <span class="text-sm text-stone font-normal">· {c.iso}</span></h3>
+              {isLive
+                ? <span class="px-2 py-0.5 rounded bg-rust/10 text-rust text-xs font-medium">LIVE</span>
+                : <span class="px-2 py-0.5 rounded bg-ink/10 text-stone text-xs font-medium">scaffolded</span>}
+            </div>
+            <dl class="text-sm text-stone grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-y-1 gap-x-3 mt-2">
+              <dt class="font-medium">Source</dt><dd>{c.source}</dd>
+              <dt class="font-medium">Cadence</dt><dd>{c.cadence}</dd>
+              <dt class="font-medium">Granularity</dt><dd>{c.granularity}</dd>
+              <dt class="font-medium">Foreign-bg.</dt>
+              <dd>
+                {c.fb === "yes" && <span class="text-rust font-medium">Published</span>}
+                {c.fb === "partial" && <span class="text-ink font-medium">Partial</span>}
+                {c.fb === "no" && <span class="text-stone font-medium">Not published</span>}
+                {" — " + c.fb_label}
+              </dd>
+              {isLive && m && (<>
+                <dt class="font-medium">Latest data</dt><dd>year ending {fmt(m.latest_period_end)} · {m.n_rows} rows × {m.n_regions} regions</dd>
+                <dt class="font-medium">Last fetched</dt><dd>{fmt(m.retrieved_at)}</dd>
+              </>)}
+            </dl>
+            <p class="text-stone mt-2 text-xs">{c.note}</p>
+          </div>
+        );
+      })}
+    </div>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Tier 2 (news) pipeline</h2>
+    <ol class="list-decimal pl-5 text-stone space-y-1">
+      <li><b>Fetch</b> — GitHub Actions runs monthly on the 1st. Pulls GDELT 2.0
+        DOC API + ~10 RSS feeds per live country.</li>
+      <li><b>Filter</b> — language detection + per-language keyword regex
+        (knife/stab/shot/etc. in EN/DE/FR/ES/IT/SV/DA). Cuts volume ~95%.</li>
+      <li><b>Extract</b> — Claude reads <code>extraction/prompts/incident_extraction.md</code>
+        once a month, applies its rules to the candidates, writes one structured
+        record per real incident. Run on the existing Claude subscription — no API
+        spend.</li>
+      <li><b>Dedupe</b> — hard collapse on
+        <code>(date, country, city, weapon, victim_fatal)</code>; merge source URLs.</li>
+      <li><b>Geocode</b> — Nominatim structured search (city + state + country),
+        with a committed cache. Region hint disambiguates homonyms.</li>
+      <li><b>Score</b> — HIGH if any police press-release source; MEDIUM if ≥2
+        independent outlets; LOW otherwise. Only HIGH+MEDIUM appear by default;
+        LOW is gated behind a toggle.</li>
+      <li><b>Upsert</b> — stable UUIDv5 <code>incident_id</code> so re-runs replace
+        rather than duplicate.</li>
+    </ol>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Sourcing and audit</h2>
+    <p class="text-stone">Every row in every Parquet file carries:</p>
+    <ul class="list-disc pl-5 text-stone space-y-1">
+      <li><code>source_url</code> — direct link to the official release.</li>
+      <li><code>source_file_hash</code> — sha256 of the archived raw file.</li>
+      <li><code>retrieved_at</code> — UTC timestamp.</li>
+    </ul>
+    <p class="text-stone mt-2">
+      Raw source files are kept under <code>data/raw/</code> (gitignored but cached
+      locally + in CI). The hash makes any historical figure verifiable.
+    </p>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Limitations we won't try to hide</h2>
+    <ul class="list-disc pl-5 text-stone space-y-2">
+      <li><b>Definitions of "homicide" differ.</b> Some countries include attempts,
+        some don't; some include negligent killing, some don't. We use the source's
+        definition and document it per-country.</li>
+      <li><b>Reporting rates vary.</b> A change in count can reflect a change in
+        reporting (citizen willingness, police priorities) as much as a change in
+        actual incidence.</li>
+      <li><b>Region boundaries shift.</b> NUTS is revised every ~3 years; we use
+        NUTS 2021. ISTAT still publishes under NUTS-2013 codes and we translate.
+        Cross-revision comparisons carry methodological notes.</li>
+      <li><b>Population denominators</b> come from Eurostat or, where Eurostat
+        leaves them empty, from the national statistical office (ISTAT mid-2024
+        for Italy, ONS mid-2023 for UK). They lag actual population by 1–2 years.</li>
+      <li><b>News pins are illustrative.</b> They are NOT a sample of all crime.
+        News coverage skews toward dramatic, urban, English-language events.</li>
+      <li><b>Geocoding is imperfect.</b> Some city names are ambiguous (Denton, Vienne,
+        Newcastle...). We disambiguate with a region hint when the article gives one.
+        Without one, Nominatim picks the most populous match; we accept that the
+        wrong pin may occasionally land in the wrong place.</li>
+    </ul>
+
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Right of correction</h2>
+    <p class="text-stone">
+      If an outlet whose article we ingested issues a retraction or correction,
+      open an <a href="https://github.com/victor-velazquez-ai/great-stabbing/issues">issue on GitHub</a>
+      and we'll honour it. Each incident row has a <code>review_status</code> that
+      can be set to <code>flagged</code> or <code>removed</code>.
+    </p>
+
+    <p class="text-stone mt-10 text-xs">
+      The canonical, code-readable version of this document lives at
+      <a href="https://github.com/victor-velazquez-ai/great-stabbing/blob/main/docs/methodology.md">docs/methodology.md</a>
+      and is the source of truth if this page ever drifts.
+    </p>
+  </article>
 </Base>

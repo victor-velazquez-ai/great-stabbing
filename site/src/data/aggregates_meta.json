@@ -2,15 +2,23 @@
   {
     "country": "FR",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-05-31T20:41:57.154787",
+    "retrieved_at": "2026-06-01T15:57:36.913325",
     "n_rows": 404,
     "n_regions": 101,
     "authority": "SSMSI"
   },
   {
+    "country": "IT",
+    "latest_period_end": "2024-12-31T00:00:00",
+    "retrieved_at": "2026-06-01T15:58:18.139928",
+    "n_rows": 63,
+    "n_regions": 21,
+    "authority": "ISTAT"
+  },
+  {
     "country": "UK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-05-31T20:41:55.227677",
+    "retrieved_at": "2026-06-01T15:57:35.004579",
     "n_rows": 50,
     "n_regions": 10,
     "authority": "ONS"

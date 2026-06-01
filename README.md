@@ -2,7 +2,7 @@
 
 > Europe-wide, interactive map and dashboard of violent crime — stabbings, shootings, fatal beatings — with regional granularity. Inspired by [hoyodecrimen.com](https://hoyodecrimen.com).
 
-**Status:** Week 3 — 2/6 MVP countries live (UK + FR), 4 scaffolded (DE/IT/SE/ES). Public URL targeted for Week 11.
+**Status:** 3/6 MVP countries live (UK + FR + IT), 3 scaffolded (DE/SE/ES). Public URL targeted for Week 11.
 
 See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the product plan and [TECHNICAL_PLAN.md](./TECHNICAL_PLAN.md) for the build plan.
 
@@ -103,7 +103,7 @@ Each adapter writes to `data/parquet/crime_aggregates.parquet` (idempotent upser
 | 🇬🇧 UK | ONS PFA tables | **live** | year ending December 2025 |
 | 🇫🇷 FR | SSMSI Interstats | **live** | year 2025 |
 | 🇩🇪 DE | BKA PKS | scaffolded — manual fallback only | — |
-| 🇮🇹 IT | ISTAT | scaffolded — manual fallback only | — |
+| 🇮🇹 IT | ISTAT (dataflow 73_230_DF_DCCV_AUTVITTPS_6) | **live** | year 2024 |
 | 🇸🇪 SE | BRÅ | scaffolded — manual fallback only | — |
 | 🇪🇸 ES | Min. Interior | scaffolded — manual fallback only | — |
 

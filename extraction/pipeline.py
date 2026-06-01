@@ -157,7 +157,14 @@ def finalize(month: str, use_network_geocode: bool = True) -> None:
     for r in deduped:
         country = (r.get("country") or "").upper()
         city = r.get("city") or ""
-        lat, lon, nuts = geocode_city(city, country, use_network=use_network_geocode) if city else (None, None, None)
+        # region_hint may be set by the extractor in a free-text region field
+        # we don't currently model. For now, look for ``region`` or ``state``
+        # on the incident dict if present.
+        region_hint = r.get("region") or r.get("state") or None
+        lat, lon, nuts = (
+            geocode_city(city, country, region_hint=region_hint, use_network=use_network_geocode)
+            if city else (None, None, None)
+        )
         r.setdefault("lat", lat)
         r.setdefault("lon", lon)
         r.setdefault("region_code", nuts)

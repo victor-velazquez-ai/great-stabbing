@@ -7,28 +7,29 @@
 # suspect_dim="total" rows; the foreign breakdown comes in a follow-up.
 
 mapping:
-  # ISTAT Italian-language category names mapped to harmonised set.
-  # Confirmed against historical ISTAT tables; verify exact strings when
-  # the live SDMX flow is wired up.
-  "Omicidi volontari consumati": homicide
-  "Omicidi volontari tentati": attempted_homicide
-  "Lesioni dolose": assault_serious
-  "Violenze sessuali": sexual_assault
-  "Rapine": robbery_violent
-  "Tentati omicidi": attempted_homicide  # alt name in older series
-  "Omicidi": homicide                    # alt name
+  # ISTAT SDMX TYPE_CRIME codes (confirmed in dataflow
+  # 73_230_DF_DCCV_AUTVITTPS_6, dimension TYPE_CRIME).
+  "INTENHOM": homicide
+  "BLOWS": assault_serious
+  "RAPE": sexual_assault
+  # STALK = stalking; not a violent bodily-harm category in our schema.
 
 skip:
-  - "Furti"
-  - "Furti con destrezza"
-  - "Furti in abitazione"
-  - "Truffe e frodi informatiche"
-  - "Reati legati a stupefacenti"
-  - "Estorsioni"
+  - "STALK"
 
 notes: |
-  Source URL family: https://esploradati.istat.it/databrowser/ — SDMX
-  dataflow IDs for crime statistics need to be confirmed by querying
-  the live API. Common IDs in the past: DCCV_DELITTIPS, JUS_DELITTI.
+  Source: ISTAT SDMX REST API, dataflow 73_230_DF_DCCV_AUTVITTPS_6
+  ("Violent crimes, age - regions / Delitti violenti, sesso, età - reg").
 
-  Manual fallback documented in adapter.py if SDMX probing fails.
+  Dimensions used:
+    DATA_TYPE = VICTIM    (per-victim count, comparable with UK ONS and FR Interstats)
+    AGE = TOTAL           (collapse age bands)
+    CITIZENSHIP = TOTAL   (this dataflow only carries TOTAL — the by-citizenship
+                           breakdown lives in dataflow 73_230_DF_DCCV_AUTVITTPS_5
+                           "Violent crimes, age, citizenship" which is a future
+                           upgrade for the foreign-background dimension)
+    COUNTRY_CITIZEN = WORLD
+    SEX = 1 + 2 (sum)     (no "TOTAL" code in this dataflow)
+    REF_AREA filtered to NUTS-2 (4-char codes ITC1..ITG2 matching region_map.csv).
+
+  Coverage: annual, 2007–latest (currently 2024).

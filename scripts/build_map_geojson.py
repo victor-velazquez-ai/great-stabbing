@@ -33,6 +33,7 @@ LOCAL = NUTS_DIR / "NUTS_RG_03M_2021_4326.geojson"
 KEEP = {
     ("UK", 1),
     ("FR", 3),
+    ("IT", 2),
 }
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

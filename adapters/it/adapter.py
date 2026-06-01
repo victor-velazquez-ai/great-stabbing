@@ -1,55 +1,45 @@
-"""Italy adapter — ISTAT *Delitti denunciati dalle forze di polizia*.
+"""Italy adapter — ISTAT SDMX *Delitti violenti, sesso, età - reg.*
 
-**Source:** Istituto Nazionale di Statistica (ISTAT). Annual statistics on
-crimes reported to the judicial authority by police forces, broken down
-by regione (NUTS-2 in Italy's case — regioni already align with NUTS-2).
+**Source:** Istituto Nazionale di Statistica (ISTAT), SDMX REST API.
+Dataflow ``73_230_DF_DCCV_AUTVITTPS_6`` exposes annual counts of violent
+crimes (homicide, assault/blows, rape, stalking) by region, sex, age,
+victim/offender, citizenship. We pull VICTIM totals at NUTS-2.
 
-**Foreign-background published?** Partial. ISTAT publishes a nationality
-dimension on some tables but not consistently. For MVP we emit only
-``suspect_dim="total"`` rows.
+**Foreign-background published?** Not in this dataflow (it has CITIZENSHIP
+but only TOTAL is populated). A sibling dataflow
+``73_230_DF_DCCV_AUTVITTPS_5`` carries the citizenship breakdown — wiring
+that up is a follow-up.
 
 **Cadence:** annual.
 
-**Status:** scaffolding complete (region map + category map). Live SDMX
-fetch deferred to next iteration — ISTAT's new exploradati portal requires
-discovering the correct dataflow ID + dimension key, which is non-trivial
-via REST probing alone. Manual fallback documented below.
+**Stable URL:**
+``https://esploradati.istat.it/SDMXWS/rest/data/73_230_DF_DCCV_AUTVITTPS_6/?format=csv``
+
+ISTAT updates this dataflow annually (typically Q4 with prior calendar
+year data).
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from adapters.common.base import Adapter, SourceFile
+from adapters.common.http import fetch_to_raw
+from adapters.common.nuts import load_region_map, population
 
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IT_DIR = REPO_ROOT / "adapters" / "it"
 
-# Best-known SDMX endpoint patterns (verify before relying on either).
-# 1. New explorer SDMX REST:
-#    https://esploradati.istat.it/SDMXWS/rest/data/<DATAFLOW>/<KEY>/?format=csv
-# 2. Direct database export pages publish XLSX/CSV at varying URLs.
-SDMX_BASE = "https://esploradati.istat.it/SDMXWS/rest"
-
-# Candidate dataflow IDs. Confirmed-present in the live IT1 catalog (probed
-# 2026-05-31): DCCV_PROCEEDCRIME_M plus its 13 versioned variants
-# (73_436_DF_DCCV_PROCEEDCRIME_M_1 … _13). These are *proceedings* (court-side)
-# rather than police-reported crimes; the latter likely lives in a sibling
-# dataflow whose ID still needs probing. Recommended next-step query:
-#   GET {SDMX_BASE}/dataflow/IT1?detail=allstubs
-#   grep DELITTI | grep DENUNCIATI
-# to find the police-reported series. Legacy IDs kept here for reference.
-CANDIDATE_DATAFLOWS: tuple[str, ...] = (
-    "DCCV_PROCEEDCRIME_M",  # confirmed exists; proceedings (court-stage) data
-    "73_436_DF_DCCV_PROCEEDCRIME_M_1",
-    "JUS_DELITTI_REGIONE",  # not in current catalog
-    "DCCV_DELITTIPS",       # legacy
-    "151_910",              # legacy
+SDMX_URL = (
+    "https://esploradati.istat.it/SDMXWS/rest/data/"
+    "73_230_DF_DCCV_AUTVITTPS_6/?format=csv&dimensionAtObservation=AllDimensions"
 )
 
 
@@ -59,40 +49,123 @@ class ITAdapter(Adapter):
     cadence = "annual"
 
     def discover(self) -> list[SourceFile]:
-        log.info(
-            "[IT] live SDMX fetch not yet wired. "
-            "Manual fallback: download the latest ISTAT *Delitti denunciati* "
-            "table from https://esploradati.istat.it/ and place under "
-            "data/raw/it/<yyyy-mm>/delitti-denunciati.csv."
-        )
-        # Probe for a manual drop-in file.
-        for candidate in (REPO_ROOT / "data" / "raw" / "it").rglob("delitti-denunciati.csv"):
-            log.info("[IT] using manually-placed file %s", candidate.relative_to(REPO_ROOT))
-            import hashlib
-            from datetime import datetime, timezone
-
-            return [
-                SourceFile(
-                    url="manual",
-                    local_path=str(candidate.relative_to(REPO_ROOT)),
-                    fetched_at=datetime.now(timezone.utc),
-                    sha256=hashlib.sha256(candidate.read_bytes()).hexdigest(),
-                )
-            ]
-        return []
+        log.info("[IT] fetching %s", SDMX_URL)
+        try:
+            src = fetch_to_raw(SDMX_URL, country="it", filename="istat-violent-crimes.csv")
+        except Exception as e:  # noqa: BLE001
+            log.error(
+                "[IT] ISTAT fetch failed (%s: %s). Manual fallback: download "
+                "https://esploradati.istat.it/databrowser/#/it/dw/categories/.../73_230 "
+                "and place under data/raw/it/<yyyy-mm>/istat-violent-crimes.csv.",
+                type(e).__name__, e,
+            )
+            return []
+        log.info("[IT] discovered %s (%s)", src.local_path, src.sha256[:12])
+        return [src]
 
     def parse(self, src: SourceFile) -> pd.DataFrame:
         path = REPO_ROOT / src.local_path
-        # ISTAT SDMX CSV exports typically include columns like
-        # TIME_PERIOD, REF_AREA (region code), TIPO_DATO12, ITTER107 (geo),
-        # and an OBS_VALUE column. The exact column set depends on the
-        # dataflow — we accept variants by snapping to known names.
-        df = pd.read_csv(path)
-        log.info("[IT] parsed %d rows from %s", len(df), path.relative_to(REPO_ROOT))
-        return df
+        log.info("[IT] parsing %s", path.relative_to(REPO_ROOT))
+
+        df = pd.read_csv(
+            path,
+            dtype={"REF_AREA": str, "TYPE_CRIME": str, "DATA_TYPE": str,
+                   "AGE": str, "CITIZENSHIP": str, "COUNTRY_CITIZEN": str,
+                   "TIME_PERIOD": str},
+            low_memory=False,
+        )
+
+        # Filter to the slice we care about.
+        df = df[
+            (df["DATA_TYPE"] == "VICTIM")
+            & (df["AGE"] == "TOTAL")
+            & (df["CITIZENSHIP"] == "TOTAL")
+            & (df["COUNTRY_CITIZEN"] == "WORLD")
+        ].copy()
+
+        df["TIME_PERIOD"] = df["TIME_PERIOD"].astype(int)
+        df["OBS_VALUE"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce").fillna(0).astype(int)
+
+        log.info(
+            "[IT] parsed %d rows after dimension filter (years %d-%d, %d crime types, %d ref-areas)",
+            len(df), df["TIME_PERIOD"].min(), df["TIME_PERIOD"].max(),
+            df["TYPE_CRIME"].nunique(), df["REF_AREA"].nunique(),
+        )
+        return df.reset_index(drop=True)
 
     def normalise(self, df: pd.DataFrame, src: SourceFile) -> pd.DataFrame:
-        raise NotImplementedError(
-            "[IT] normalise() not implemented. Run discover() with a manually "
-            "placed file first to confirm column shape, then map to canonical."
+        cat_map_path = IT_DIR / "category_map.yaml"
+        with cat_map_path.open(encoding="utf-8") as f:
+            cat = yaml.safe_load(f) or {}
+        mapping: dict[str, str] = cat.get("mapping", {}) or {}
+
+        nuts_map = load_region_map("IT")  # native_code (ISTAT NUTS-2013) → NUTS-2021
+
+        df = df.copy()
+        df["category"] = df["TYPE_CRIME"].map(mapping)
+        df = df.dropna(subset=["category"])
+        # ISTAT publishes ref-areas using NUTS-2013 codes (ITD*, ITE*). Filter
+        # by native_code (left side of the map), then translate to NUTS-2021
+        # for our canonical schema.
+        df = df[df["REF_AREA"].isin(set(nuts_map.keys()))]
+        df["nuts_code"] = df["REF_AREA"].map(nuts_map)
+
+        # Sum across SEX (the dataflow has SEX=1/2 but no 'TOTAL' code).
+        agg = (
+            df.groupby(["nuts_code", "REF_AREA", "category", "TIME_PERIOD"], as_index=False)
+            .agg(
+                count=("OBS_VALUE", "sum"),
+                native_examples=("TYPE_CRIME", lambda s: ", ".join(sorted(set(s))[:3])),
+            )
         )
+
+        latest_year = int(agg["TIME_PERIOD"].max())
+        agg = agg[agg["TIME_PERIOD"] == latest_year]
+
+        retrieved_at = pd.Timestamp.now(tz="UTC").tz_localize(None)
+        rows: list[dict] = []
+        for _, r in agg.iterrows():
+            nuts = str(r["nuts_code"])  # NUTS-2021
+            pop = population(nuts)
+            count = int(r["count"])
+            rate = (count / pop * 100_000) if pop else None
+            rows.append(
+                {
+                    "source_country": "IT",
+                    "source_authority": self.authority,
+                    "source_url": SDMX_URL,
+                    "source_file_hash": src.sha256,
+                    "retrieved_at": retrieved_at,
+                    "period_start": pd.Timestamp(date(latest_year, 1, 1)),
+                    "period_end": pd.Timestamp(date(latest_year, 12, 31)),
+                    "period_type": "year",
+                    "region_code": nuts,
+                    "region_level": 2,
+                    "crime_category": str(r["category"]),
+                    "crime_category_native": str(r["native_examples"]),
+                    "suspect_dim": "total",
+                    "suspect_dim_value": None,
+                    "count": count,
+                    "denominator_population": pop,
+                    "denominator_source": "Eurostat NUTS 2021" if pop else None,
+                    "rate_per_100k": rate,
+                    "notes": (
+                        "ISTAT dataflow 73_230_DF_DCCV_AUTVITTPS_6, VICTIM count summed "
+                        "across SEX. Foreign-background (citizenship) lives in sibling "
+                        "dataflow ...AUTVITTPS_5; not yet integrated."
+                    ),
+                }
+            )
+
+        out = pd.DataFrame(rows)
+        if not out.empty:
+            out["count"] = out["count"].astype(int)
+            out["region_level"] = out["region_level"].astype(int)
+            out["denominator_population"] = out["denominator_population"].astype("Int64")
+
+        log.info(
+            "[IT] normalised %d rows across %d regions (year %d)",
+            len(out), out["region_code"].nunique() if not out.empty else 0,
+            latest_year,
+        )
+        return out
