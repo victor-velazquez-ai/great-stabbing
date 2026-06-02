@@ -1,0 +1,116 @@
+---
+import Base from "../../layouts/Base.astro";
+import countrySummaries from "../../data/country_summaries.json";
+import meta from "../../data/aggregates_meta.json";
+
+interface Row {
+  region_code: string;
+  region_level: number;
+  region_name: string | null;
+  homicide_count: number | null;
+  homicide_rate: number | null;
+  violent_total_count: number | null;
+  violent_total_rate: number | null;
+  assault_count: number | null;
+  assault_rate: number | null;
+  robbery_count: number | null;
+  robbery_rate: number | null;
+  sexual_assault_count: number | null;
+  sexual_assault_rate: number | null;
+  population: number | null;
+  period_start: string;
+  period_end: string;
+  source_url: string;
+}
+interface MetaRow {
+  country: string;
+  latest_period_end: string | null;
+  retrieved_at: string | null;
+  n_rows: number;
+  n_regions: number;
+  authority: string;
+}
+
+const summaries = countrySummaries as Record<string, Row[]>;
+const metaRows = meta as MetaRow[];
+
+export async function getStaticPaths() {
+  const summaries = (await import("../../data/country_summaries.json")).default as Record<string, Row[]>;
+  const paths: Array<{ params: { nuts: string }; props: { country: string; row: Row } }> = [];
+  for (const country of Object.keys(summaries)) {
+    for (const r of summaries[country]) {
+      paths.push({ params: { nuts: r.region_code }, props: { country, row: r } });
+    }
+  }
+  return paths;
+}
+
+const { country, row } = Astro.props as { country: string; row: Row };
+const { nuts } = Astro.params as { nuts: string };
+const m = metaRows.find((x) => x.country === country);
+
+const COUNTRY_NAMES: Record<string, string> = {
+  UK: "United Kingdom", FR: "France", IT: "Italy", DE: "Germany", SE: "Sweden", ES: "Spain",
+};
+
+const nf = new Intl.NumberFormat("en-GB");
+const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+
+// Build a country leaderboard — where does this region rank?
+const sibling = (summaries[country] ?? [])
+  .filter((r) => r.region_level === row.region_level && r.homicide_rate !== null)
+  .sort((a, b) => (b.homicide_rate ?? 0) - (a.homicide_rate ?? 0));
+const rank = sibling.findIndex((r) => r.region_code === nuts) + 1;
+const ofN = sibling.length;
+
+function periodLabel(period_end: string | undefined | null): string {
+  if (!period_end) return "—";
+  const d = period_end.split("T")[0];
+  return new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+---
+<Base title={`${row.region_name ?? nuts} — The Great Stabbing`}>
+  <article class="px-6 py-12 max-w-4xl mx-auto">
+    <nav class="text-sm text-stone mb-4">
+      <a href="/">Europe</a> · <a href={`/country/${country}`}>{COUNTRY_NAMES[country] ?? country}</a>
+    </nav>
+    <h1 class="text-4xl font-semibold mb-2">{row.region_name ?? nuts}</h1>
+    <p class="text-stone text-sm mb-6">
+      {COUNTRY_NAMES[country] ?? country} · NUTS-{row.region_level} · {nuts}
+      {row.population !== null && (
+        <> · pop. {nf.format(row.population)}</>
+      )}
+      {rank > 0 && (
+        <> · ranked #{rank} of {ofN} by homicide rate</>
+      )}
+    </p>
+
+    {/* Metric cards */}
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold mb-3">Recorded crime — year ending {periodLabel(row.period_end)}</h2>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[
+          { label: "Homicide", count: row.homicide_count, rate: row.homicide_rate },
+          { label: "Serious assault", count: row.assault_count, rate: row.assault_rate },
+          { label: "Sexual assault", count: row.sexual_assault_count, rate: row.sexual_assault_rate },
+          { label: "Robbery (violent)", count: row.robbery_count, rate: row.robbery_rate },
+          { label: "Violent total", count: row.violent_total_count, rate: row.violent_total_rate },
+        ].map((c) => (
+          <div class="border border-ink/10 rounded p-3">
+            <div class="text-xs text-stone uppercase tracking-wide">{c.label}</div>
+            <div class="text-2xl font-semibold tabular-nums mt-1">{c.count !== null ? nf.format(c.count) : "—"}</div>
+            <div class="text-xs text-stone tabular-nums">{c.rate !== null ? `${rateFmt.format(c.rate)} / 100k` : "—"}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="text-sm text-stone">
+      <p>
+        Source: <a href={row.source_url}>{m?.authority ?? "—"}</a>.
+        Suspect-background dimension is shown on the country page where the source
+        publishes it (see <a href={`/country/${country}`}>{COUNTRY_NAMES[country] ?? country}</a>).
+      </p>
+    </section>
+  </article>
+</Base>

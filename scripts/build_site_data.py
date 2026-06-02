@@ -75,6 +75,10 @@ def main() -> None:
                     max(CASE WHEN crime_category = 'violent_total' THEN rate_per_100k END) AS violent_total_rate,
                     max(CASE WHEN crime_category = 'assault_serious' THEN count END) AS assault_count,
                     max(CASE WHEN crime_category = 'assault_serious' THEN rate_per_100k END) AS assault_rate,
+                    max(CASE WHEN crime_category = 'robbery_violent' THEN count END) AS robbery_count,
+                    max(CASE WHEN crime_category = 'robbery_violent' THEN rate_per_100k END) AS robbery_rate,
+                    max(CASE WHEN crime_category = 'sexual_assault' THEN count END) AS sexual_assault_count,
+                    max(CASE WHEN crime_category = 'sexual_assault' THEN rate_per_100k END) AS sexual_assault_rate,
                     max(denominator_population) AS population,
                     max(period_start) AS period_start,
                     max(period_end) AS period_end,
@@ -96,6 +100,8 @@ def main() -> None:
             "homicide_count", "homicide_rate",
             "violent_total_count", "violent_total_rate",
             "assault_count", "assault_rate",
+            "robbery_count", "robbery_rate",
+            "sexual_assault_count", "sexual_assault_rate",
             "population", "period_start", "period_end", "source_url", "region_name",
         ]
         country_rows = [dict(zip(cols, row, strict=True)) for row in rows]
@@ -110,6 +116,51 @@ def main() -> None:
     (OUT_DIR / "country_summaries.json").write_text(
         json.dumps(summaries, indent=2, default=str), encoding="utf-8"
     )
+
+    # ---- foreign-background side-panel data (where published) ----
+    fb_rows = con.execute(
+        f"""
+        WITH base AS (
+            SELECT *
+            FROM read_parquet('{PARQUET.as_posix()}')
+            WHERE suspect_dim IN ('total', 'national', 'foreign')
+        ),
+        latest AS (
+            SELECT source_country, max(period_end) AS pe
+            FROM base GROUP BY source_country
+        )
+        SELECT
+            b.source_country AS country,
+            b.region_code,
+            b.crime_category,
+            max(CASE WHEN b.suspect_dim = 'total' THEN b.count END) AS total,
+            max(CASE WHEN b.suspect_dim = 'national' THEN b.count END) AS national,
+            max(CASE WHEN b.suspect_dim = 'foreign' THEN b.count END) AS foreign,
+            max(b.period_end) AS period_end
+        FROM base b
+        INNER JOIN latest l ON b.source_country = l.source_country AND b.period_end = l.pe
+        GROUP BY b.source_country, b.region_code, b.crime_category
+        HAVING max(CASE WHEN b.suspect_dim = 'foreign' THEN b.count END) IS NOT NULL
+        ORDER BY b.source_country, b.region_code, b.crime_category
+        """
+    ).fetchall()
+    fb_data: dict[str, list[dict]] = {}
+    for r in fb_rows:
+        country = r[0]
+        period = r[6].isoformat() if r[6] is not None else None
+        fb_data.setdefault(country, []).append({
+            "region_code": r[1],
+            "crime_category": r[2],
+            "total": int(r[3]) if r[3] is not None else None,
+            "national": int(r[4]) if r[4] is not None else None,
+            "foreign": int(r[5]) if r[5] is not None else None,
+            "foreign_share_pct": round(100.0 * r[5] / r[3], 1) if r[3] and r[5] else None,
+            "period_end": period,
+        })
+    (OUT_DIR / "foreign_background.json").write_text(
+        json.dumps(fb_data, indent=2, default=str), encoding="utf-8"
+    )
+    log.info("wrote foreign_background.json (%d countries with FB data)", len(fb_data))
 
     # Per-country freshness metadata.
     meta_rows = con.execute(

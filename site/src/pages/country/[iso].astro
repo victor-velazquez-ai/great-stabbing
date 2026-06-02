@@ -1,0 +1,188 @@
+---
+import Base from "../../layouts/Base.astro";
+import countrySummaries from "../../data/country_summaries.json";
+import meta from "../../data/aggregates_meta.json";
+import foreignBackground from "../../data/foreign_background.json";
+
+interface Row {
+  region_code: string;
+  region_level: number;
+  region_name: string | null;
+  homicide_count: number | null;
+  homicide_rate: number | null;
+  violent_total_count: number | null;
+  violent_total_rate: number | null;
+  assault_count: number | null;
+  assault_rate: number | null;
+  robbery_count: number | null;
+  robbery_rate: number | null;
+  sexual_assault_count: number | null;
+  sexual_assault_rate: number | null;
+  population: number | null;
+  period_start: string;
+  period_end: string;
+  source_url: string;
+}
+interface MetaRow {
+  country: string;
+  latest_period_end: string | null;
+  retrieved_at: string | null;
+  n_rows: number;
+  n_regions: number;
+  authority: string;
+}
+interface FBRow {
+  region_code: string;
+  crime_category: string;
+  total: number | null;
+  national: number | null;
+  foreign: number | null;
+  foreign_share_pct: number | null;
+}
+
+const summaries = countrySummaries as Record<string, Row[]>;
+const metaRows = meta as MetaRow[];
+const fbData = foreignBackground as Record<string, FBRow[]>;
+
+export async function getStaticPaths() {
+  const summaries = (await import("../../data/country_summaries.json")).default as Record<string, unknown>;
+  return Object.keys(summaries).map((iso) => ({ params: { iso } }));
+}
+
+const { iso } = Astro.params as { iso: string };
+
+const COUNTRY_NAMES: Record<string, string> = {
+  UK: "United Kingdom", FR: "France", IT: "Italy", DE: "Germany", SE: "Sweden", ES: "Spain",
+};
+const countryName = COUNTRY_NAMES[iso] ?? iso;
+const rows = (summaries[iso] ?? []).filter((r) => r.region_level > 0 || iso === "DE" || iso === "SE");
+const m = metaRows.find((x) => x.country === iso);
+const fb = fbData[iso] ?? [];
+
+const nf = new Intl.NumberFormat("en-GB");
+const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+
+function periodLabel(period_end: string | undefined | null): string {
+  if (!period_end) return "—";
+  const d = period_end.split("T")[0];
+  return new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+// National totals (if NUTS-0 row exists for this country, e.g. DE/SE).
+const nuts0 = (summaries[iso] ?? []).find((r) => r.region_code === iso);
+---
+<Base title={`${countryName} — The Great Stabbing`}>
+  <article class="px-6 py-12 max-w-4xl mx-auto">
+    <nav class="text-sm text-stone mb-4"><a href="/">← Europe</a></nav>
+    <h1 class="text-4xl font-semibold mb-2">{countryName}</h1>
+    <p class="text-stone text-sm mb-6">
+      ISO {iso} · Source: {m?.authority ?? "—"} · Latest: {periodLabel(m?.latest_period_end)} ·
+      Last fetched: {m?.retrieved_at ? periodLabel(m.retrieved_at) : "—"}
+    </p>
+
+    {/* National headlines */}
+    {nuts0 && (
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-3">National totals — year ending {periodLabel(nuts0.period_end)}</h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: "Homicide", count: nuts0.homicide_count, rate: nuts0.homicide_rate },
+            { label: "Serious assault", count: nuts0.assault_count, rate: nuts0.assault_rate },
+            { label: "Sexual assault", count: nuts0.sexual_assault_count, rate: nuts0.sexual_assault_rate },
+            { label: "Robbery (violent)", count: nuts0.robbery_count, rate: nuts0.robbery_rate },
+            { label: "Violent total", count: nuts0.violent_total_count, rate: nuts0.violent_total_rate },
+          ].map((m) => (
+            <div class="border border-ink/10 rounded p-3">
+              <div class="text-xs text-stone uppercase tracking-wide">{m.label}</div>
+              <div class="text-2xl font-semibold tabular-nums mt-1">{m.count !== null ? nf.format(m.count) : "—"}</div>
+              <div class="text-xs text-stone tabular-nums">{m.rate !== null ? `${rateFmt.format(m.rate)} / 100k` : "—"}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* Foreign-background panel — DE has it */}
+    {fb.length > 0 && (
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-3">Foreign-suspect share</h2>
+        <p class="text-stone text-sm mb-3">
+          The official source for {countryName} publishes a suspect breakdown by
+          nationality / origin. Counts are <em>suspects</em>, not convictions, and are
+          not adjusted for age or sex composition of the resident foreign population.
+        </p>
+        <div class="overflow-x-auto rounded border border-ink/10">
+          <table class="w-full text-sm">
+            <thead class="bg-ink/5 text-left">
+              <tr>
+                <th class="px-3 py-2 font-medium">Category</th>
+                <th class="px-3 py-2 font-medium text-right">Total</th>
+                <th class="px-3 py-2 font-medium text-right">National</th>
+                <th class="px-3 py-2 font-medium text-right">Foreign</th>
+                <th class="px-3 py-2 font-medium text-right">Foreign share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fb.map((r) => (
+                <tr class="border-t border-ink/10">
+                  <td class="px-3 py-2 font-medium">{r.crime_category.replace("_", " ")}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.total !== null ? nf.format(r.total) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.national !== null ? nf.format(r.national) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.foreign !== null ? nf.format(r.foreign) : "—"}</td>
+                  <td class="px-3 py-2 text-right font-medium text-rust tabular-nums">{r.foreign_share_pct !== null ? `${r.foreign_share_pct}%` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    {/* Regional table (skip if only NUTS-0 row, i.e. DE/SE) */}
+    {rows.length > 0 && (rows[0].region_code !== iso) && (
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-3">By region — sorted by homicide rate</h2>
+        <div class="overflow-x-auto rounded border border-ink/10">
+          <table class="w-full text-sm">
+            <thead class="bg-ink/5 text-left">
+              <tr>
+                <th class="px-3 py-2 font-medium">Region</th>
+                <th class="px-3 py-2 font-medium text-right">Homicide</th>
+                <th class="px-3 py-2 font-medium text-right">/ 100k</th>
+                <th class="px-3 py-2 font-medium text-right">Assault</th>
+                <th class="px-3 py-2 font-medium text-right">/ 100k</th>
+                <th class="px-3 py-2 font-medium text-right">Sex. assault</th>
+                <th class="px-3 py-2 font-medium text-right">/ 100k</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr class="border-t border-ink/10 hover:bg-ink/5">
+                  <td class="px-3 py-2">
+                    <a href={`/region/${r.region_code}`} class="font-medium">{r.region_name ?? r.region_code}</a>
+                    <span class="text-xs text-stone ml-1">({r.region_code})</span>
+                  </td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums font-medium">{r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.assault_count !== null ? nf.format(r.assault_count) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.assault_rate !== null ? rateFmt.format(r.assault_rate) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.sexual_assault_count !== null ? nf.format(r.sexual_assault_count) : "—"}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{r.sexual_assault_rate !== null ? rateFmt.format(r.sexual_assault_rate) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    <section class="mt-12 text-sm text-stone">
+      <p>
+        Authoritative source: <a href={m?.authority ? rows[0]?.source_url ?? "#" : "#"}>{m?.authority ?? "—"}</a>.
+        Full source URL: <code class="text-xs">{rows[0]?.source_url ?? "—"}</code>.
+        See <a href="/methodology">/methodology</a> for the project-wide rules and
+        per-country disclosures.
+      </p>
+    </section>
+  </article>
+</Base>
