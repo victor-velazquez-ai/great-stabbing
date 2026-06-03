@@ -217,12 +217,12 @@ class ESAdapter(Adapter):
             len(df_matched), len(df),
         )
 
-        # Use latest year.
+        # Last 10 years of history.
         latest_year = int(df_matched["year"].max())
-        df_latest = df_matched[df_matched["year"] == latest_year]
+        df_recent = df_matched[df_matched["year"] >= latest_year - 9]
 
         agg = (
-            df_latest.groupby(["nuts", "category"], as_index=False)
+            df_recent.groupby(["nuts", "category", "year"], as_index=False)
             .agg(
                 count=("count", "sum"),
                 native_examples=("category_native", lambda s: ", ".join(sorted(set(s))[:3])),
@@ -236,14 +236,15 @@ class ESAdapter(Adapter):
             pop = population(nuts)
             count = int(r["count"])
             rate = (count / pop * 100_000) if pop else None
+            yr = int(r["year"])
             rows.append({
                 "source_country": "ES",
                 "source_authority": self.authority,
                 "source_url": SEC_URL_03002,
                 "source_file_hash": src.sha256,
                 "retrieved_at": retrieved_at,
-                "period_start": pd.Timestamp(date(latest_year, 1, 1)),
-                "period_end": pd.Timestamp(date(latest_year, 12, 31)),
+                "period_start": pd.Timestamp(date(yr, 1, 1)),
+                "period_end": pd.Timestamp(date(yr, 12, 31)),
                 "period_type": "year",
                 "region_code": nuts,
                 "region_level": 3,

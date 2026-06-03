@@ -2,36 +2,135 @@
 import Base from "../layouts/Base.astro";
 ---
 <Base title="Data — The Great Stabbing">
-  <section class="px-6 py-12 max-w-3xl mx-auto prose">
+  <article class="px-4 sm:px-6 py-12 max-w-4xl mx-auto prose">
     <h1 class="text-3xl font-semibold mb-4">Data</h1>
     <p class="text-stone">
-      All datasets are committed to the repo as Parquet files. You can download them
-      directly or query them in-place with DuckDB.
+      All canonical datasets ship as Parquet files. You can download them, or query
+      them in your browser with the SQL playground below (powered by DuckDB-WASM —
+      everything runs client-side, nothing leaves your machine).
     </p>
 
-    <h2 class="text-xl font-semibold mt-8 mb-2">Files</h2>
-    <ul class="list-disc pl-5 text-stone space-y-2">
-      <li>
-        <code>data/parquet/crime_aggregates.parquet</code> — Tier 1 official statistics,
-        one row per (country, period, region, category, suspect dimension).
-      </li>
-      <li>
-        <code>data/parquet/incidents.parquet</code> — Tier 2 news-extracted incidents,
-        one row per real incident, with verbatim source quotes.
-      </li>
-      <li>
-        <code>data/parquet/nuts_regions.parquet</code> — Eurostat NUTS 2021 region
-        lookup (codes, names, parents, centroids).
-      </li>
+    <h2 class="text-2xl font-semibold mt-10 mb-3">Downloads</h2>
+    <ul class="list-disc pl-5 text-stone space-y-2 text-sm">
+      <li><a href="/data/crime_aggregates.parquet"><code>crime_aggregates.parquet</code></a> — Tier 1 official statistics. One row per (country, period, region, category, suspect dimension).</li>
+      <li><a href="/data/incidents.parquet"><code>incidents.parquet</code></a> — Tier 2 news-extracted incidents. One row per real incident, with verbatim source quotes.</li>
+      <li><a href="/data/nuts_regions.parquet"><code>nuts_regions.parquet</code></a> — Eurostat NUTS 2021 region lookup (codes, names, parents, centroids, populations).</li>
+      <li><a href="/data/regions.geojson"><code>regions.geojson</code></a> — Simplified NUTS boundaries for the live MVP countries.</li>
+      <li><a href="/data/incidents.geojson"><code>incidents.geojson</code></a> — Tier 2 incidents as GeoJSON for direct map consumption.</li>
     </ul>
 
-    <h2 class="text-xl font-semibold mt-8 mb-2">Querying with DuckDB</h2>
-    <pre class="bg-ink/5 p-4 rounded text-sm overflow-x-auto"><code>SELECT region_code, count, rate_per_100k
-FROM 'data/parquet/crime_aggregates.parquet'
-WHERE source_country = 'DE'
-  AND crime_category = 'homicide'
+    <h2 class="text-2xl font-semibold mt-10 mb-3">SQL playground</h2>
+    <p class="text-stone text-sm mb-4">
+      Click <b>Load</b> to initialise DuckDB-WASM (one-time ~3MB download) and register the
+      Parquet files. Then edit the query and click <b>Run</b>. Common functions all work:
+      joins, aggregations, window functions. Results table is capped at 1,000 rows.
+    </p>
+
+    <div class="not-prose flex items-center gap-3 mb-3">
+      <button id="duckdb-load" class="px-3 py-1.5 rounded bg-rust text-bone text-sm font-medium hover:bg-rust/90 focus:outline-none focus:ring-2 focus:ring-rust/40">
+        Load DuckDB
+      </button>
+      <span id="duckdb-status" class="text-xs text-stone">Not loaded.</span>
+    </div>
+
+    <textarea id="duckdb-query" rows="9" aria-label="SQL query input"
+      class="not-prose w-full font-mono text-sm border border-ink/20 rounded p-3 focus:outline-none focus:ring-2 focus:ring-rust/40"
+    >-- Top 10 European regions by homicide rate per 100k (latest year)
+SELECT
+  source_country AS cc,
+  region_code,
+  crime_category_native,
+  count,
+  ROUND(rate_per_100k, 2) AS rate_per_100k
+FROM 'crime_aggregates.parquet'
+WHERE crime_category = 'homicide'
   AND suspect_dim = 'total'
-  AND period_type = 'year'
-ORDER BY period_start DESC, count DESC;</code></pre>
-  </section>
+  AND rate_per_100k IS NOT NULL
+ORDER BY rate_per_100k DESC
+LIMIT 10;</textarea>
+
+    <div class="not-prose mt-3 flex items-center gap-3">
+      <button id="duckdb-run" disabled
+        class="px-3 py-1.5 rounded bg-ink text-bone text-sm font-medium hover:bg-ink/90 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-rust/40">
+        Run
+      </button>
+      <span id="duckdb-error" class="text-xs text-rust font-mono"></span>
+    </div>
+
+    <div id="duckdb-result" class="not-prose mt-5 overflow-x-auto rounded border border-ink/10 hidden">
+      <table class="w-full text-sm">
+        <thead id="duckdb-thead" class="bg-ink/5 text-left"></thead>
+        <tbody id="duckdb-tbody"></tbody>
+      </table>
+    </div>
+  </article>
 </Base>
+
+<script>
+  // Lazy-load DuckDB-WASM only when the user clicks Load.
+  let db: any = null;
+  let conn: any = null;
+
+  async function loadDuckDB() {
+    const status = document.getElementById("duckdb-status")!;
+    const loadBtn = document.getElementById("duckdb-load") as HTMLButtonElement;
+    const runBtn = document.getElementById("duckdb-run") as HTMLButtonElement;
+    loadBtn.disabled = true;
+    status.textContent = "Loading DuckDB-WASM …";
+
+    try {
+      const duckdb = await import("@duckdb/duckdb-wasm");
+      const bundles = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(bundles);
+      const worker = new Worker(bundle.mainWorker!);
+      const logger = new duckdb.ConsoleLogger();
+      db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      conn = await db.connect();
+
+      // Register the parquet files served from /data/.
+      for (const name of ["crime_aggregates.parquet", "incidents.parquet", "nuts_regions.parquet"]) {
+        const r = await fetch(`/data/${name}`);
+        const buf = new Uint8Array(await r.arrayBuffer());
+        await db.registerFileBuffer(name, buf);
+      }
+
+      status.textContent = "Ready. 3 Parquet files registered.";
+      loadBtn.textContent = "Loaded";
+      runBtn.disabled = false;
+    } catch (e: any) {
+      status.textContent = "Failed to load: " + (e?.message ?? e);
+      loadBtn.disabled = false;
+    }
+  }
+
+  async function runQuery() {
+    if (!conn) return;
+    const q = (document.getElementById("duckdb-query") as HTMLTextAreaElement).value;
+    const err = document.getElementById("duckdb-error")!;
+    const result = document.getElementById("duckdb-result")!;
+    const thead = document.getElementById("duckdb-thead")!;
+    const tbody = document.getElementById("duckdb-tbody")!;
+    err.textContent = "";
+    try {
+      const arrow = await conn.query(q + " LIMIT 1000");
+      const rows = arrow.toArray();
+      const schema = arrow.schema.fields.map((f: any) => f.name);
+      thead.innerHTML = "<tr>" + schema.map((s: string) => `<th class="px-3 py-2 font-medium">${s}</th>`).join("") + "</tr>";
+      tbody.innerHTML = rows.map((r: any) =>
+        "<tr class=\"border-t border-ink/10\">" +
+        schema.map((s: string) => {
+          const v = r[s];
+          return `<td class="px-3 py-2 tabular-nums">${v === null || v === undefined ? "—" : String(v)}</td>`;
+        }).join("") +
+        "</tr>"
+      ).join("");
+      result.classList.remove("hidden");
+    } catch (e: any) {
+      err.textContent = e?.message ?? String(e);
+    }
+  }
+
+  document.getElementById("duckdb-load")?.addEventListener("click", loadDuckDB);
+  document.getElementById("duckdb-run")?.addEventListener("click", runQuery);
+</script>

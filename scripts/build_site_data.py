@@ -52,6 +52,36 @@ def main() -> None:
     ]
     log.info("countries with data: %s", countries)
 
+    # ---- multi-year history per region per metric ----
+    # Shape: {region_code: {year: {metric: rate, "count": ...}}}
+    # Drives the homepage time slider. Latest-year summaries below remain
+    # for the static initial render.
+    hist_rows = con.execute(
+        f"""
+        SELECT
+            region_code,
+            EXTRACT(year FROM period_end) AS yr,
+            crime_category,
+            count,
+            rate_per_100k
+        FROM read_parquet('{PARQUET.as_posix()}')
+        WHERE suspect_dim = 'total'
+        ORDER BY region_code, yr, crime_category
+        """
+    ).fetchall()
+    history: dict[str, dict[int, dict[str, dict[str, float | int | None]]]] = {}
+    for region, yr, cat, cnt, rate in hist_rows:
+        history.setdefault(region, {}).setdefault(int(yr), {})[cat] = {
+            "count": int(cnt) if cnt is not None else None,
+            "rate": float(rate) if rate is not None else None,
+        }
+    (OUT_DIR / "history.json").write_text(
+        json.dumps(history, default=str, separators=(",", ":")), encoding="utf-8"
+    )
+    yr_min = min((y for r in history.values() for y in r.keys()), default=2024)
+    yr_max = max((y for r in history.values() for y in r.keys()), default=2024)
+    log.info("wrote history.json (%d regions × %d-%d)", len(history), yr_min, yr_max)
+
     summaries: dict[str, list[dict]] = {}
     for country in countries:
         rows = con.execute(

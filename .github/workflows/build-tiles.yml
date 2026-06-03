@@ -1,0 +1,66 @@
+name: Build NUTS PMTiles
+
+# Run on data refresh OR manual dispatch. Tippecanoe must compile from source
+# (no apt package), so we cache the binary to avoid re-building.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build_tiles.sh"
+      - "data/nuts/**"
+      - ".github/workflows/build-tiles.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache tippecanoe binary
+        id: cache-tip
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/tippecanoe
+          key: tippecanoe-felt-v2.78.0
+
+      - name: Build tippecanoe (cache miss)
+        if: steps.cache-tip.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth=1 --branch=main https://github.com/felt/tippecanoe.git /tmp/tip
+          cd /tmp/tip
+          make -j2
+          sudo cp tippecanoe /usr/local/bin/tippecanoe
+
+      - name: Install mapshaper
+        run: npm install -g mapshaper
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - run: uv sync
+
+      - name: Refresh NUTS GeoJSON (if missing)
+        run: uv run python scripts/refresh_nuts_lookup.py
+
+      - name: Build PMTiles
+        run: bash scripts/build_tiles.sh
+
+      - name: Commit PMTiles
+        run: |
+          git config user.name "great-stabbing-bot"
+          git config user.email "bot@great-stabbing.local"
+          if [[ -n "$(git status --porcelain data/tiles/ site/public/tiles/)" ]]; then
+            mkdir -p site/public/tiles
+            cp data/tiles/nuts.pmtiles site/public/tiles/nuts.pmtiles
+            git add data/tiles/ site/public/tiles/
+            git commit -m "chore(tiles): rebuild NUTS PMTiles"
+            git push
+          else
+            echo "no tile changes"
+          fi

@@ -143,8 +143,10 @@ class ITAdapter(Adapter):
                 native_examples=("TYPE_CRIME", lambda s: ", ".join(sorted(set(s))[:3])),
             )
         )
+        # Last 10 years of regional history (years before that are likely
+        # under NUTS-2013 boundaries that don't match our 2021 maps cleanly).
         latest_year = int(agg["TIME_PERIOD"].max())
-        agg = agg[agg["TIME_PERIOD"] == latest_year]
+        agg = agg[agg["TIME_PERIOD"] >= latest_year - 9]
 
         retrieved_at = pd.Timestamp.now(tz="UTC").tz_localize(None)
         rows: list[dict] = []
@@ -153,8 +155,9 @@ class ITAdapter(Adapter):
             pop = population(nuts)
             count = int(r["count"])
             rate = (count / pop * 100_000) if pop else None
+            row_year = int(r["TIME_PERIOD"])
             rows.append(self._row(
-                period_year=latest_year, nuts=nuts, level=2, category=str(r["category"]),
+                period_year=row_year, nuts=nuts, level=2, category=str(r["category"]),
                 native_examples=str(r["native_examples"]), suspect_dim="total",
                 count=count, pop=pop, rate=rate, retrieved_at=retrieved_at, src=src,
                 source_url=SDMX_URL,

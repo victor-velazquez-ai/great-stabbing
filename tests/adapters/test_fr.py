@@ -62,12 +62,15 @@ def test_parse_filters_victims_only(fake_source: SourceFile) -> None:
     assert parsed["nombre"].dtype.kind == "i"  # numeric
 
 
-def test_normalise_latest_year_only(fake_source: SourceFile) -> None:
+def test_normalise_recent_history_only(fake_source: SourceFile) -> None:
     a = FRAdapter()
     parsed = a.parse(fake_source)
     norm = a.normalise(parsed, fake_source)
-    # Only 2025 rows. 4 départements × at most 3 categories.
-    assert (norm["period_start"].dt.year == 2025).all()
+    # Emits last 10 calendar years. Fixture has 2024 + 2025.
+    years = set(norm["period_start"].dt.year)
+    assert max(years) == 2025
+    # Latest year is well-represented.
+    assert (norm["period_start"].dt.year == 2025).any()
     assert set(norm["region_code"]).issubset({"FR101", "FRL04", "FRL03", "FRY10"})
 
 

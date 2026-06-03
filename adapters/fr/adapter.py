@@ -121,12 +121,10 @@ class FRAdapter(Adapter):
         df["nuts"] = df["Code_departement"].map(dep_to_nuts)
         df = df.dropna(subset=["nuts"])
 
-        # Use the latest available year unless we want full historical.
-        # For MVP we emit the LATEST year only — the homepage shows current
-        # snapshot. Historical years can be flipped on later by removing this
-        # filter (the schema is year-indexed so older years won't collide).
+        # Emit recent history (last 10 calendar years) so the homepage time
+        # slider has something to show.
         latest_year = int(df["annee"].max())
-        df = df[df["annee"] == latest_year]
+        df = df[df["annee"] >= latest_year - 9]
 
         agg = (
             df.groupby(["nuts", "category", "annee"], as_index=False)

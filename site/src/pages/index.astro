@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import countrySummaries from "../data/country_summaries.json";
 import meta from "../data/aggregates_meta.json";
 import foreignBackground from "../data/foreign_background.json";
+import history from "../data/history.json";
 
 interface Row {
   region_code: string;
@@ -38,51 +39,29 @@ interface FBRow {
   national: number | null;
   foreign: number | null;
   foreign_share_pct: number | null;
-  period_end: string | null;
 }
 
 const summaries = countrySummaries as Record<string, Row[]>;
 const metaRows = meta as MetaRow[];
 const fbData = foreignBackground as Record<string, FBRow[]>;
+const historyData = history as Record<string, Record<string, Record<string, { count: number | null; rate: number | null }>>>;
 
-// region_code → all the per-metric data the client needs to drive the map.
-const regionData: Record<string, {
-  homicide_rate: number | null; homicide_count: number | null;
-  assault_rate: number | null; assault_count: number | null;
-  robbery_rate: number | null; robbery_count: number | null;
-  sexual_assault_rate: number | null; sexual_assault_count: number | null;
-  violent_total_rate: number | null; violent_total_count: number | null;
-  region_name: string | null;
-  country: string;
-}> = {};
-for (const country of Object.keys(summaries)) {
-  for (const r of summaries[country]) {
-    regionData[r.region_code] = {
-      homicide_rate: r.homicide_rate,
-      homicide_count: r.homicide_count,
-      assault_rate: r.assault_rate,
-      assault_count: r.assault_count,
-      robbery_rate: r.robbery_rate,
-      robbery_count: r.robbery_count,
-      sexual_assault_rate: r.sexual_assault_rate,
-      sexual_assault_count: r.sexual_assault_count,
-      violent_total_rate: r.violent_total_rate,
-      violent_total_count: r.violent_total_count,
-      region_name: r.region_name,
-      country,
-    };
-  }
+// Year range for the time slider.
+const allYears: number[] = [];
+for (const region of Object.values(historyData)) {
+  for (const yr of Object.keys(region)) allYears.push(parseInt(yr));
 }
+const minYear = allYears.length ? Math.min(...allYears) : 2024;
+const maxYear = allYears.length ? Math.max(...allYears) : 2024;
 
 const nf = new Intl.NumberFormat("en-GB");
 const rateFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
 const ukRows = summaries["UK"] ?? [];
 const frRows = (summaries["FR"] ?? []).slice(0, 15);
-const deRows = summaries["DE"] ?? [];
 const fbDE = fbData["DE"] ?? [];
 
-function periodLabel(period_end: string | undefined): string {
+function periodLabel(period_end: string | undefined | null): string {
   if (!period_end) return "—";
   const d = period_end.split("T")[0];
   return new Date(d).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -92,67 +71,76 @@ const mvpStatus = [
   { iso: "UK", name: "United Kingdom", authority: "ONS", status: "live" },
   { iso: "FR", name: "France", authority: "SSMSI Interstats", status: "live" },
   { iso: "IT", name: "Italy", authority: "ISTAT", status: "live" },
-  { iso: "DE", name: "Germany", authority: "BKA PKS Zeitreihen", status: "live" },
+  { iso: "DE", name: "Germany", authority: "BKA PKS Zeitreihen + Land", status: "live" },
   { iso: "SE", name: "Sweden", authority: "BRÅ Anmälda brott", status: "live" },
-  { iso: "ES", name: "Spain", authority: "Ministerio del Interior", status: "scaffolded" },
+  { iso: "ES", name: "Spain", authority: "Min. Interior SEC", status: "live" },
 ];
-const liveCount = mvpStatus.filter((c) => c.status === "live").length;
 ---
 <Base>
-  <section class="px-6 py-12 max-w-3xl mx-auto">
-    <h1 class="text-4xl md:text-5xl font-semibold mb-4">The Great Stabbing</h1>
-    <p class="text-lg text-stone mb-6">
+  <section class="px-4 sm:px-6 py-10 sm:py-12 max-w-3xl mx-auto">
+    <h1 class="text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">The Great Stabbing</h1>
+    <p class="text-base sm:text-lg text-stone mb-6">
       A Europe-wide map of violent crime — stabbings, shootings, fatal beatings — pulled
       from each country's official police and statistical authorities, and from regional
       news media. Inspired by
       <a href="https://hoyodecrimen.com">hoyodecrimen.com</a>.
     </p>
     <p class="text-stone mb-6 text-sm">
-      <strong>Status:</strong> {liveCount} of 6 MVP countries live. The choropleth below
-      shades regions by your chosen metric (rate per 100k per year). Red dots are
-      individual news-extracted incidents from the past two months. See
-      <a href="/methodology">methodology</a> for sources and caveats.
+      <strong>Status:</strong> 6 of 6 MVP countries live. The choropleth shades regions by
+      the metric you pick. The time slider scrubs through history where available.
+      Red dots are news-extracted incidents; click to read the source quote.
     </p>
   </section>
 
-  <section class="px-6 max-w-6xl mx-auto">
-    <div class="mb-3 flex flex-wrap items-center gap-3 justify-between">
-      <div class="flex items-center gap-2">
+  <section class="px-4 sm:px-6 max-w-6xl mx-auto">
+    <div class="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:justify-between">
+      <div class="flex flex-wrap items-center gap-2">
         <label for="metric-select" class="text-sm font-medium text-ink">Metric:</label>
-        <select id="metric-select" class="bg-bone border border-ink/20 rounded px-3 py-1.5 text-sm">
-          <option value="homicide_rate" selected>Homicide rate / 100k</option>
-          <option value="assault_rate">Serious assault rate / 100k</option>
-          <option value="robbery_rate">Violent robbery rate / 100k</option>
-          <option value="sexual_assault_rate">Sexual assault rate / 100k</option>
-          <option value="violent_total_rate">Violent total rate / 100k</option>
+        <select id="metric-select" aria-label="Choose which metric the choropleth shades by"
+          class="bg-bone border border-ink/20 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-rust/40">
+          <option value="homicide" selected>Homicide rate / 100k</option>
+          <option value="assault_serious">Serious assault rate / 100k</option>
+          <option value="robbery_violent">Violent robbery rate / 100k</option>
+          <option value="sexual_assault">Sexual assault rate / 100k</option>
+          <option value="violent_total">Violent total rate / 100k</option>
         </select>
-        <label class="text-sm text-stone ml-3 flex items-center gap-1.5">
-          <input id="show-pins" type="checkbox" checked />
-          show news pins
+        <label class="text-sm text-stone ml-3 flex items-center gap-1.5 cursor-pointer">
+          <input id="show-pins" type="checkbox" checked aria-label="Toggle news-extracted incident pins" />
+          news pins
         </label>
       </div>
-      <div class="text-xs text-stone">
-        Grey regions: no data published for that metric.
-      </div>
+      <div class="text-xs text-stone">Grey: no data for that metric / year.</div>
     </div>
     <div class="relative">
-      <div id="map" class="h-[70vh] w-full rounded-lg border border-ink/10 bg-bone"></div>
-      <div id="map-legend" class="absolute bottom-3 left-3 bg-bone/95 backdrop-blur p-3 rounded border border-ink/10 text-xs">
+      <div id="map" role="region" aria-label="Choropleth map of Europe shaded by violent crime rate"
+        class="h-[60vh] sm:h-[70vh] w-full rounded-lg border border-ink/10 bg-bone touch-pan-y"></div>
+      <div id="map-legend" class="absolute bottom-3 left-3 bg-bone/95 backdrop-blur p-3 rounded border border-ink/10 text-xs pointer-events-none">
         <div class="font-medium mb-1" id="legend-title">Homicides / 100k / year</div>
-        <div id="legend-bar" class="flex items-center space-x-1"></div>
-        <div id="legend-labels" class="flex justify-between text-stone tabular-nums mt-1 w-[160px]"></div>
-        <div class="text-stone mt-1 text-[10px]">Sources: per-country, see methodology</div>
+        <div id="legend-bar" class="flex items-center space-x-1" aria-hidden="true"></div>
+        <div id="legend-labels" class="flex justify-between text-stone tabular-nums mt-1 w-[160px]" aria-hidden="true"></div>
+      </div>
+    </div>
+    {/* Time slider */}
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <label for="year-slider" class="text-sm font-medium whitespace-nowrap">
+        Year: <span id="year-label" class="tabular-nums">{maxYear}</span>
+      </label>
+      <input id="year-slider" type="range" min={minYear} max={maxYear} value={maxYear} step="1"
+        aria-label="Choose which year of data the map displays"
+        class="w-full accent-rust" />
+      <div class="text-xs text-stone tabular-nums whitespace-nowrap">
+        {minYear} — {maxYear}
       </div>
     </div>
     <p class="text-xs text-stone mt-2">
       Map base: OpenStreetMap. Region boundaries: Eurostat NUTS 2021 (03M).
-      Mixed granularity — UK at NUTS-1, FR at NUTS-3, IT at NUTS-2, DE and SE at country level (NUTS-0).
-      Hover for region details; click a red dot to read the source quote.
+      Mixed granularity per source. Some countries only publish current-year data;
+      others (FR / IT / ES) carry 10 years of history.
     </p>
   </section>
 
   <!-- MVP status -->
-  <section class="px-6 py-12 max-w-4xl mx-auto">
+  <section class="px-4 sm:px-6 py-12 max-w-4xl mx-auto">
     <h2 class="text-2xl font-semibold mb-4">MVP country status</h2>
     <div class="overflow-x-auto rounded-lg border border-ink/10">
       <table class="w-full text-sm">
@@ -177,11 +165,7 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
                 </td>
                 <td class="px-3 py-2 text-stone">{c.authority}</td>
                 <td class="px-3 py-2">
-                  {c.status === "live" ? (
-                    <span class="inline-block px-2 py-0.5 rounded bg-rust/10 text-rust text-xs font-medium">LIVE</span>
-                  ) : (
-                    <span class="inline-block px-2 py-0.5 rounded bg-ink/10 text-stone text-xs font-medium">scaffolded</span>
-                  )}
+                  <span class="inline-block px-2 py-0.5 rounded bg-rust/10 text-rust text-xs font-medium">LIVE</span>
                 </td>
                 <td class="px-3 py-2 text-right tabular-nums">{m ? nf.format(m.n_rows) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{m ? nf.format(m.n_regions) : "—"}</td>
@@ -194,15 +178,14 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
     </div>
   </section>
 
-  <!-- Foreign-background panel (DE — the headline) -->
+  {/* Foreign-background panel */}
   {fbDE.length > 0 && (
-    <section class="px-6 pb-12 max-w-4xl mx-auto">
+    <section class="px-4 sm:px-6 pb-12 max-w-4xl mx-auto">
       <h2 class="text-2xl font-semibold mb-2">Germany — foreign-suspect share <span class="text-sm font-normal text-stone">(Nichtdeutsche Tatverdächtige)</span></h2>
       <p class="text-stone text-sm mb-3">
         BKA's Polizeiliche Kriminalstatistik publishes a national/non-national split for
-        Tatverdächtige (suspects) — the dimension Germany is in the MVP for. Suspects ≠ convictions,
-        and these are not adjusted for age or sex composition. See
-        <a href="/methodology">methodology</a> for the strict rules we follow on this variable.
+        Tatverdächtige (suspects). Suspects ≠ convictions, and not adjusted for age or sex.
+        See <a href="/methodology">methodology</a> for the rules we follow.
       </p>
       <div class="overflow-x-auto rounded-lg border border-ink/10">
         <table class="w-full text-sm">
@@ -228,82 +211,35 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
           </tbody>
         </table>
       </div>
-      <p class="text-xs text-stone mt-3">
-        Source: BKA PKS Zeitreihen — federal (NUTS-0) totals, year ending December 2024.
-      </p>
     </section>
   )}
 
-  <!-- UK table -->
+  {/* UK + FR tables (collapsed in mobile) */}
   {ukRows.length > 0 && (
-    <section class="px-6 pb-12 max-w-4xl mx-auto">
+    <section class="px-4 sm:px-6 pb-12 max-w-4xl mx-auto">
       <div class="flex items-baseline justify-between mb-4">
-        <h2 class="text-2xl font-semibold">United Kingdom — homicide by NUTS-1 region</h2>
+        <h2 class="text-2xl font-semibold">UK — by NUTS-1 region</h2>
         <span class="text-xs text-stone">year ending {periodLabel(ukRows[0].period_end)}</span>
       </div>
       <div class="overflow-x-auto rounded-lg border border-ink/10">
         <table class="w-full text-sm">
-          <thead class="bg-ink/5 text-left">
-            <tr>
-              <th class="px-3 py-2 font-medium">Region</th>
-              <th class="px-3 py-2 font-medium text-right">Homicides</th>
-              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
-              <th class="px-3 py-2 font-medium text-right">Violent total</th>
-              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
-              <th class="px-3 py-2 font-medium text-right text-stone">Population</th>
-            </tr>
-          </thead>
+          <thead class="bg-ink/5 text-left"><tr>
+            <th class="px-3 py-2 font-medium">Region</th>
+            <th class="px-3 py-2 font-medium text-right">Homicides</th>
+            <th class="px-3 py-2 font-medium text-right">/ 100k</th>
+            <th class="px-3 py-2 font-medium text-right">Violent total</th>
+            <th class="px-3 py-2 font-medium text-right">/ 100k</th>
+          </tr></thead>
           <tbody>
             {ukRows.map((r) => (
               <tr class="border-t border-ink/10 hover:bg-ink/5">
                 <td class="px-3 py-2">
                   <a href={`/region/${r.region_code}`} class="font-medium">{r.region_name ?? r.region_code}</a>
-                  <span class="text-xs text-stone ml-1">({r.region_code})</span>
                 </td>
                 <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums font-medium">{r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{r.violent_total_count !== null ? nf.format(r.violent_total_count) : "—"}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{r.violent_total_rate !== null ? rateFmt.format(r.violent_total_rate) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums text-stone">{r.population !== null ? nf.format(r.population) : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  )}
-
-  <!-- France top 15 -->
-  {frRows.length > 0 && (
-    <section class="px-6 pb-12 max-w-4xl mx-auto">
-      <div class="flex items-baseline justify-between mb-4">
-        <h2 class="text-2xl font-semibold">France — top 15 départements by homicide rate</h2>
-        <span class="text-xs text-stone">year {periodLabel(frRows[0].period_end).split(" ").pop()}</span>
-      </div>
-      <div class="overflow-x-auto rounded-lg border border-ink/10">
-        <table class="w-full text-sm">
-          <thead class="bg-ink/5 text-left">
-            <tr>
-              <th class="px-3 py-2 font-medium">Département</th>
-              <th class="px-3 py-2 font-medium text-right">Homicides</th>
-              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
-              <th class="px-3 py-2 font-medium text-right">Assault</th>
-              <th class="px-3 py-2 font-medium text-right">Per 100k</th>
-              <th class="px-3 py-2 font-medium text-right text-stone">Population</th>
-            </tr>
-          </thead>
-          <tbody>
-            {frRows.map((r) => (
-              <tr class="border-t border-ink/10 hover:bg-ink/5">
-                <td class="px-3 py-2">
-                  <a href={`/region/${r.region_code}`} class="font-medium">{r.region_name ?? r.region_code}</a>
-                  <span class="text-xs text-stone ml-1">({r.region_code})</span>
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums">{r.homicide_count !== null ? nf.format(r.homicide_count) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums font-medium">{r.homicide_rate !== null ? rateFmt.format(r.homicide_rate) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums">{r.assault_count !== null ? nf.format(r.assault_count) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums">{r.assault_rate !== null ? rateFmt.format(r.assault_rate) : "—"}</td>
-                <td class="px-3 py-2 text-right tabular-nums text-stone">{r.population !== null ? nf.format(r.population) : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -313,56 +249,58 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
   )}
 </Base>
 
-<!-- Lookups inlined as JSON islands so the map module reads them without re-fetching. -->
-<script id="region-data" type="application/json" set:html={JSON.stringify(regionData)} />
+<script id="history-data" type="application/json" set:html={JSON.stringify(historyData)} />
+<script id="year-bounds" type="application/json" set:html={JSON.stringify({minYear, maxYear})} />
 
 <script>
   import maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
 
-  const regionEl = document.getElementById("region-data");
-  const regions: Record<string, any> = regionEl ? JSON.parse(regionEl.textContent ?? "{}") : {};
+  const historyEl = document.getElementById("history-data");
+  const yrEl = document.getElementById("year-bounds");
+  const history: Record<string, Record<string, Record<string, { count: number | null; rate: number | null }>>> =
+    historyEl ? JSON.parse(historyEl.textContent ?? "{}") : {};
+  const { minYear, maxYear } = yrEl ? JSON.parse(yrEl.textContent ?? "{}") : { minYear: 2024, maxYear: 2024 };
 
-  type Metric =
-    | "homicide_rate" | "assault_rate" | "robbery_rate"
-    | "sexual_assault_rate" | "violent_total_rate";
+  type Metric = "homicide" | "assault_serious" | "robbery_violent" | "sexual_assault" | "violent_total";
 
-  // Per-metric quintile-style breaks (chosen to avoid extreme outliers compressing
-  // the scale). Values above the last break get the darkest band.
   const METRIC_CONFIG: Record<Metric, { label: string; legend: string; breaks: number[] }> = {
-    homicide_rate:        { label: "Homicide rate / 100k",        legend: "Homicides / 100k / year",        breaks: [0.5, 1, 2, 4] },
-    assault_rate:         { label: "Serious assault rate / 100k", legend: "Serious assaults / 100k / year", breaks: [50, 150, 300, 500] },
-    robbery_rate:         { label: "Violent robbery rate / 100k", legend: "Violent robbery / 100k / year",  breaks: [10, 30, 60, 100] },
-    sexual_assault_rate:  { label: "Sexual assault rate / 100k",  legend: "Sexual assault / 100k / year",   breaks: [10, 30, 60, 120] },
-    violent_total_rate:   { label: "Violent total rate / 100k",   legend: "Violent total / 100k / year",    breaks: [200, 600, 1200, 2000] },
+    homicide:        { label: "Homicide rate / 100k",        legend: "Homicides / 100k / year",        breaks: [0.5, 1, 2, 4] },
+    assault_serious: { label: "Serious assault rate / 100k", legend: "Serious assaults / 100k / year", breaks: [50, 150, 300, 500] },
+    robbery_violent: { label: "Violent robbery rate / 100k", legend: "Violent robbery / 100k / year",  breaks: [10, 30, 60, 100] },
+    sexual_assault:  { label: "Sexual assault rate / 100k",  legend: "Sexual assault / 100k / year",   breaks: [10, 30, 60, 120] },
+    violent_total:   { label: "Violent total rate / 100k",   legend: "Violent total / 100k / year",    breaks: [200, 600, 1200, 2000] },
   };
-  const COLORS = ["#fef3e0", "#fbcfa5", "#f59557", "#d65f1c", "#9b2a2a"]; // light → rust
+  const COLORS = ["#fef3e0", "#fbcfa5", "#f59557", "#d65f1c", "#9b2a2a"];
 
-  let currentMetric: Metric = "homicide_rate";
+  let currentMetric: Metric = "homicide";
+  let currentYear: number = maxYear;
+  let regionsGeo: any = null;
 
-  const map = new maplibregl.Map({
-    container: "map",
-    style: {
-      version: 8,
-      sources: {
-        osm: {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
-        },
-      },
-      layers: [{ id: "osm", type: "raster", source: "osm" }],
-    },
-    center: [10, 50],
-    zoom: 4,
-    maxZoom: 9,
-  });
-  map.addControl(new maplibregl.NavigationControl(), "top-right");
+  function valueFor(code: string, yr: number, metric: Metric): number | null {
+    // Walk back up to 5 years to find data — countries publish at different cadences.
+    for (let y = yr; y >= yr - 4; y--) {
+      const entry = history[code]?.[String(y)]?.[metric];
+      if (entry && entry.rate !== null && entry.rate !== undefined) return entry.rate;
+    }
+    return null;
+  }
 
-  function setLegend(metric: Metric) {
-    const cfg = METRIC_CONFIG[metric];
-    document.getElementById("legend-title")!.textContent = cfg.legend;
+  function rebuildFeatures() {
+    if (!regionsGeo) return;
+    for (const f of regionsGeo.features) {
+      const code = f.properties?.code as string | undefined;
+      if (!code) continue;
+      const v = valueFor(code, currentYear, currentMetric);
+      f.properties.value = v;
+    }
+    const src = map.getSource("regions");
+    if (src && (src as any).setData) (src as any).setData(regionsGeo);
+  }
+
+  function setLegend() {
+    const cfg = METRIC_CONFIG[currentMetric];
+    document.getElementById("legend-title")!.textContent = `${cfg.legend} — ${currentYear}`;
     const bar = document.getElementById("legend-bar")!;
     bar.innerHTML = "";
     for (const c of COLORS) {
@@ -381,11 +319,11 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
     }
   }
 
-  function fillExpression(metric: Metric): any {
-    const cfg = METRIC_CONFIG[metric];
+  function fillExpression(): any {
+    const cfg = METRIC_CONFIG[currentMetric];
     return [
       "step",
-      ["coalesce", ["get", metric], -1],
+      ["coalesce", ["get", "value"], -1],
       "#e0e0e0", -1,
       COLORS[0], 0,
       COLORS[1], cfg.breaks[0],
@@ -395,61 +333,94 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
     ];
   }
 
+  const map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        osm: { type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>' },
+      },
+      layers: [{ id: "osm", type: "raster", source: "osm" }],
+    },
+    center: [10, 50],
+    zoom: 3.5,
+    maxZoom: 9,
+  });
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+
   map.on("load", async () => {
     const resp = await fetch("/data/regions.geojson");
-    if (!resp.ok) {
-      console.warn("regions.geojson not available", resp.status);
-      return;
-    }
-    const geo = await resp.json();
-    for (const f of geo.features) {
-      const code = f.properties?.code as string | undefined;
-      const hit = code ? regions[code] : null;
-      f.properties = f.properties || {};
-      if (hit) {
-        f.properties.homicide_rate       = hit.homicide_rate;
-        f.properties.assault_rate        = hit.assault_rate;
-        f.properties.robbery_rate        = hit.robbery_rate;
-        f.properties.sexual_assault_rate = hit.sexual_assault_rate;
-        f.properties.violent_total_rate  = hit.violent_total_rate;
-        f.properties.homicide_count      = hit.homicide_count;
-        f.properties.country_iso         = hit.country;
-      }
-    }
+    if (!resp.ok) return;
+    regionsGeo = await resp.json();
+    rebuildFeatures();
 
-    map.addSource("regions", { type: "geojson", data: geo });
+    map.addSource("regions", { type: "geojson", data: regionsGeo });
     map.addLayer({
-      id: "region-fill",
-      type: "fill",
-      source: "regions",
-      paint: { "fill-color": fillExpression(currentMetric), "fill-opacity": 0.78 },
+      id: "region-fill", type: "fill", source: "regions",
+      paint: { "fill-color": fillExpression(), "fill-opacity": 0.78 },
     });
     map.addLayer({
-      id: "region-line",
-      type: "line",
-      source: "regions",
+      id: "region-line", type: "line", source: "regions",
       paint: { "line-color": "#0f0f0f", "line-width": 0.4, "line-opacity": 0.6 },
     });
 
-    // ----- Pin layer -----
+    // ----- Incidents source + clustering -----
     try {
       const ir = await fetch("/data/incidents.geojson");
       if (ir.ok) {
         const incidents = await ir.json();
-        map.addSource("incidents", { type: "geojson", data: incidents });
+        map.addSource("incidents", {
+          type: "geojson",
+          data: incidents,
+          cluster: true,
+          clusterMaxZoom: 9,
+          clusterRadius: 40,
+        });
+        // Cluster circles
+        map.addLayer({
+          id: "incident-clusters",
+          type: "circle",
+          source: "incidents",
+          filter: ["has", "point_count"],
+          paint: {
+            "circle-color": "#d65f1c",
+            "circle-radius": [
+              "step", ["get", "point_count"],
+              14, 5, 18, 10, 22,
+            ],
+            "circle-stroke-color": "#0f0f0f",
+            "circle-stroke-width": 1.2,
+            "circle-opacity": 0.85,
+          },
+        });
+        map.addLayer({
+          id: "incident-cluster-count",
+          type: "symbol",
+          source: "incidents",
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": ["get", "point_count_abbreviated"],
+            "text-size": 12,
+            "text-font": ["Noto Sans Regular"],
+          },
+          paint: { "text-color": "#0f0f0f" },
+        });
+        // Unclustered points
         map.addLayer({
           id: "incident-pins",
           type: "circle",
           source: "incidents",
+          filter: ["!", ["has", "point_count"]],
           paint: {
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 4, 6, 6, 9, 9],
             "circle-color": [
-              "case",
-              [">", ["coalesce", ["get", "victim_fatal"], 0], 0],
+              "case", [">", ["coalesce", ["get", "victim_fatal"], 0], 0],
               "#9b2a2a", "#d65f1c",
             ],
-            "circle-stroke-color": "#0f0f0f",
-            "circle-stroke-width": 1,
+            "circle-stroke-color": "#0f0f0f", "circle-stroke-width": 1,
             "circle-opacity": [
               "case",
               ["==", ["get", "confidence"], "HIGH"], 0.95,
@@ -483,8 +454,20 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
             </div>`;
           ipop.setLngLat((f.geometry as any).coordinates).setHTML(html).addTo(map);
         });
+        // Click cluster → zoom in
+        map.on("click", "incident-clusters", (e) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ["incident-clusters"] });
+          const clusterId = features[0].properties?.cluster_id;
+          const src = map.getSource("incidents") as any;
+          src.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+            if (err) return;
+            map.easeTo({ center: (features[0].geometry as any).coordinates, zoom });
+          });
+        });
         map.on("mouseenter", "incident-pins", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "incident-pins", () => { map.getCanvas().style.cursor = ""; });
+        map.on("mouseenter", "incident-clusters", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "incident-clusters", () => { map.getCanvas().style.cursor = ""; });
       }
     } catch {}
 
@@ -496,11 +479,11 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
       const p = f.properties as any;
       const fmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
       const cfg = METRIC_CONFIG[currentMetric];
-      const v = p[currentMetric];
+      const v = p.value;
       const html = `
         <div style="font-family:Inter,system-ui;font-size:12px;line-height:1.4">
           <div style="font-weight:600">${p.name ?? p.code}</div>
-          <div style="color:#6b6b6b">${p.country_iso ?? "—"} · ${p.code}</div>
+          <div style="color:#6b6b6b">${p.country ?? "—"} · ${p.code} · ${currentYear}</div>
           <div style="margin-top:4px">
             ${cfg.label}: <b>${v !== null && v !== undefined ? fmt.format(v) : "—"}</b>
           </div>
@@ -508,29 +491,31 @@ const liveCount = mvpStatus.filter((c) => c.status === "live").length;
       map.getCanvas().style.cursor = "pointer";
       popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
     });
-    map.on("mouseleave", "region-fill", () => {
-      map.getCanvas().style.cursor = "";
-      popup.remove();
-    });
+    map.on("mouseleave", "region-fill", () => { map.getCanvas().style.cursor = ""; popup.remove(); });
 
-    setLegend(currentMetric);
+    setLegend();
   });
 
-  // Metric selector handler
+  // Controls
   document.getElementById("metric-select")?.addEventListener("change", (e) => {
-    const target = e.target as HTMLSelectElement;
-    currentMetric = target.value as Metric;
+    currentMetric = (e.target as HTMLSelectElement).value as Metric;
+    rebuildFeatures();
     if (map.getLayer("region-fill")) {
-      map.setPaintProperty("region-fill", "fill-color", fillExpression(currentMetric));
+      map.setPaintProperty("region-fill", "fill-color", fillExpression());
     }
-    setLegend(currentMetric);
+    setLegend();
   });
-
-  // Pin toggle
+  document.getElementById("year-slider")?.addEventListener("input", (e) => {
+    currentYear = parseInt((e.target as HTMLInputElement).value);
+    document.getElementById("year-label")!.textContent = String(currentYear);
+    rebuildFeatures();
+    setLegend();
+  });
   document.getElementById("show-pins")?.addEventListener("change", (e) => {
     const t = e.target as HTMLInputElement;
-    if (map.getLayer("incident-pins")) {
-      map.setLayoutProperty("incident-pins", "visibility", t.checked ? "visible" : "none");
+    const v = t.checked ? "visible" : "none";
+    for (const id of ["incident-pins", "incident-clusters", "incident-cluster-count"]) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
     }
   });
 </script>
