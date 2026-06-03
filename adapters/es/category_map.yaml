@@ -1,34 +1,66 @@
-# Ministerio del Interior — *Balances trimestrales de criminalidad*.
-# Quarterly PDF publications with provincia-level indicators.
+# Ministerio del Interior — Sistema Estadístico de Criminalidad (SEC), table 03002.
+# Confirmed live against the SEC CSV (2024 data, released October 2025).
 #
-# Foreign-background published? Partial. Some MI tables include nationality
-# of detainees as a separate dimension; not consistent across periods.
-# For MVP we emit only suspect_dim="total".
+# Foreign-background? Partial — SEC tables 03004/03006/03008 carry a
+# nationality dimension (Española / Extranjera). We wire those as a follow-up.
 
 mapping:
-  # Spanish-language indicator names → harmonised category.
-  "Homicidios dolosos y asesinatos consumados": homicide
-  "Homicidios dolosos y asesinatos en grado de tentativa": attempted_homicide
-  "Lesiones por arma blanca": assault_serious
-  "Lesiones por arma de fuego": assault_serious
-  "Delitos contra la libertad sexual": sexual_assault
-  "Agresión sexual con penetración": sexual_assault
-  "Robos con violencia e intimidación": robbery_violent
-  "Robos con violencia": robbery_violent
+  # 1.1 Homicide family. We use 1.1.1 (consumados) as canonical homicide
+  # to match other countries' definitions (completed killings only). The
+  # 1.1 parent (asesinatos+homicidios) double-counts attempts.
+  "1.1.1.-Homicidios dolosos/asesinatos consumados": homicide
+  # 1.2 Lesiones is the assault umbrella.
+  "1.2.-Lesiones": assault_serious
+  # 3.1 + 3.2 are agresión sexual sub-categories — sum into sexual_assault.
+  "3.1.-Agresión sexual": sexual_assault
+  "3.2.-Agresión sexual con penetración": sexual_assault
+  # 5.3 Robos con violencia is robbery_violent. Note SEC also publishes
+  # sub-locations (5.3.1 vía pública, 5.3.2 viviendas, 5.3.3 establecimientos)
+  # — using 5.3 parent total to avoid double-counting.
+  "5.3.-Robos con violencia o intimidación": robbery_violent
 
 skip:
-  - "Robos con fuerza en domicilios"
-  - "Hurtos"
-  - "Estafas"
-  - "Tráfico de drogas"
+  - "1.1.-Homicidios dolosos/asesinatos"
+  - "1. CONTRA LAS PERSONAS"
+  - "1.3.-Malos tratos ámbito familiar"
+  - "1.4.-Otros contra las personas"
+  - "2. CONTRA LA LIBERTAD"
+  - "2.1.-Malos tratos habituales en el ámbito familiar"
+  - "2.2.-Otros contra la libertad"
+  - "3. LIBERTAD SEXUAL"
+  - "3.3.-Corrupción de menores o incapacitados"
+  - "3.4.-Pornografía de menores"
+  - "3.5.-Otros contra la libertad sexual"
+  - "4. RELACIONES FAMILIARES"
+  - "5. PATRIMONIO"
+  - "5.1.-Hurtos"
+  - "5.2.-Robos con fuerza en las cosas"
+  - "5.2.1.-Robos con fuerza en las cosas en el interior de vehículos"
+  - "5.2.2.-Robos con fuerza en viviendas"
+  - "5.2.3.-Robos con fuerza en establecimientos"
+  - "5.3.1.-Robos con violencia en vía pública"
+  - "5.3.2.-Robos con violencia en viviendas"
+  - "5.3.3.-Robos con violencia en establecimientos"
+  - "5.4.-Sustracción de vehículos"
+  - "5.5.-Estafas"
+  - "5.5.1.-Estafas informáticas"
+  - "5.6.-Daños"
+  - "5.7.-Contra la propiedad intelectual/industrial"
+  - "5.8.-Blanqueo de capitales"
+  - "5.9.-Otros contra el patrimonio"
+  - "6. SEGURIDAD COLECTIVA"
+  - "6.1.-Tráfico de drogas"
+  - "6.2.-Contra la seguridad vial"
+  - "6.3.-Otros contra la seguridad colectiva"
+  - "7. FALSEDADES"
 
 notes: |
-  Source: https://www.interior.gob.es/opencms/es/servicios-al-ciudadano/
-  estadisticas/. Each quarterly Balance trimestral comes as a multi-page PDF
-  with one provincia-level table per main indicator. PDFs are parsed via
-  pdfplumber.
+  Source: SEC table 03002 (Detenciones e investigados por provincias,
+  tipología penal y periodo). Counts are "Detenciones e investigados"
+  (arrests + persons under investigation), not strictly the same as
+  "victims" or "incidents" — closer to "suspects". Adapter logs this
+  caveat with each row.
 
-  Some indicators (lesiones por arma blanca/fuego) report attack instruments;
-  these are aggregated under assault_serious for cross-country comparability.
-  A future revision could split them into knife_offence / firearm_offence
-  harmonised categories.
+  The hierarchical structure of SEC CSVs (province header followed by
+  4-space-indented category rows) requires bespoke parsing — handled in
+  adapter.py.

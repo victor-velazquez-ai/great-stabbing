@@ -39,6 +39,7 @@ KEEP = {
     ("IT", 2),
     ("DE", 0),
     ("SE", 0),
+    ("ES", 3),
 }
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

@@ -24,7 +24,7 @@ from adapters.common.base import SourceFile
 
 log = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT = 60
+DEFAULT_TIMEOUT = 180  # ISTAT's SDMX endpoint is slow for full-dataflow exports
 DEFAULT_UA = (
     "Mozilla/5.0 (compatible; great-stabbing/0.0.1; "
     "+https://github.com/victor-velazquez-ai/great-stabbing)"

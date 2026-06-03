@@ -41,6 +41,18 @@ SDMX_URL = (
     "https://esploradati.istat.it/SDMXWS/rest/data/"
     "73_230_DF_DCCV_AUTVITTPS_6/?format=csv&dimensionAtObservation=AllDimensions"
 )
+# Sibling dataflow — same TYPE_CRIME but with CITIZENSHIP populated
+# (ITL = Italian / FRG = foreigner / TOTAL). National level only.
+SDMX_URL_FB = (
+    "https://esploradati.istat.it/SDMXWS/rest/data/"
+    "73_230_DF_DCCV_AUTVITTPS_5/?format=csv&dimensionAtObservation=AllDimensions"
+)
+
+CITIZENSHIP_TO_SUSPECT_DIM = {
+    "TOTAL": "total",
+    "ITL": "national",
+    "FRG": "foreign",
+}
 
 
 class ITAdapter(Adapter):
@@ -49,19 +61,20 @@ class ITAdapter(Adapter):
     cadence = "annual"
 
     def discover(self) -> list[SourceFile]:
-        log.info("[IT] fetching %s", SDMX_URL)
-        try:
-            src = fetch_to_raw(SDMX_URL, country="it", filename="istat-violent-crimes.csv")
-        except Exception as e:  # noqa: BLE001
-            log.error(
-                "[IT] ISTAT fetch failed (%s: %s). Manual fallback: download "
-                "https://esploradati.istat.it/databrowser/#/it/dw/categories/.../73_230 "
-                "and place under data/raw/it/<yyyy-mm>/istat-violent-crimes.csv.",
-                type(e).__name__, e,
-            )
-            return []
-        log.info("[IT] discovered %s (%s)", src.local_path, src.sha256[:12])
-        return [src]
+        srcs: list[SourceFile] = []
+        for url, fname in [
+            (SDMX_URL, "istat-violent-crimes.csv"),
+            (SDMX_URL_FB, "istat-violent-crimes-citizenship.csv"),
+        ]:
+            log.info("[IT] fetching %s", url)
+            try:
+                src = fetch_to_raw(url, country="it", filename=fname)
+            except Exception as e:  # noqa: BLE001
+                log.error("[IT] fetch failed for %s: %s", fname, e)
+                continue
+            srcs.append(src)
+            log.info("[IT] discovered %s (%s)", src.local_path, src.sha256[:12])
+        return srcs
 
     def parse(self, src: SourceFile) -> pd.DataFrame:
         path = REPO_ROOT / src.local_path
@@ -75,21 +88,31 @@ class ITAdapter(Adapter):
             low_memory=False,
         )
 
-        # Filter to the slice we care about.
-        df = df[
-            (df["DATA_TYPE"] == "VICTIM")
-            & (df["AGE"] == "TOTAL")
-            & (df["CITIZENSHIP"] == "TOTAL")
-            & (df["COUNTRY_CITIZEN"] == "WORLD")
-        ].copy()
+        is_fb_file = "citizenship" in path.name.lower()
+        if is_fb_file:
+            # FB sibling: AGE has no TOTAL, REF_AREA only IT, CITIZENSHIP populated.
+            df = df[
+                (df["DATA_TYPE"] == "VICTIM")
+                & (df["COUNTRY_CITIZEN"] == "WORLD")
+                & (df["CITIZENSHIP"].isin(CITIZENSHIP_TO_SUSPECT_DIM.keys()))
+            ].copy()
+        else:
+            # Main dataflow with regional breakdown (CITIZENSHIP only TOTAL).
+            df = df[
+                (df["DATA_TYPE"] == "VICTIM")
+                & (df["AGE"] == "TOTAL")
+                & (df["CITIZENSHIP"] == "TOTAL")
+                & (df["COUNTRY_CITIZEN"] == "WORLD")
+            ].copy()
 
         df["TIME_PERIOD"] = df["TIME_PERIOD"].astype(int)
         df["OBS_VALUE"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce").fillna(0).astype(int)
+        df["__is_fb__"] = is_fb_file
 
         log.info(
-            "[IT] parsed %d rows after dimension filter (years %d-%d, %d crime types, %d ref-areas)",
-            len(df), df["TIME_PERIOD"].min(), df["TIME_PERIOD"].max(),
-            df["TYPE_CRIME"].nunique(), df["REF_AREA"].nunique(),
+            "[IT] parsed %d rows from %s (years %d-%d, %d ref-areas)",
+            len(df), path.name, df["TIME_PERIOD"].min(), df["TIME_PERIOD"].max(),
+            df["REF_AREA"].nunique(),
         )
         return df.reset_index(drop=True)
 
@@ -99,18 +122,20 @@ class ITAdapter(Adapter):
             cat = yaml.safe_load(f) or {}
         mapping: dict[str, str] = cat.get("mapping", {}) or {}
 
-        nuts_map = load_region_map("IT")  # native_code (ISTAT NUTS-2013) → NUTS-2021
-
         df = df.copy()
         df["category"] = df["TYPE_CRIME"].map(mapping)
         df = df.dropna(subset=["category"])
-        # ISTAT publishes ref-areas using NUTS-2013 codes (ITD*, ITE*). Filter
-        # by native_code (left side of the map), then translate to NUTS-2021
-        # for our canonical schema.
-        df = df[df["REF_AREA"].isin(set(nuts_map.keys()))]
+
+        is_fb_file = bool(df["__is_fb__"].iloc[0]) if "__is_fb__" in df.columns and len(df) else False
+        if is_fb_file:
+            return self._normalise_fb(df, src)
+        return self._normalise_regional(df, src)
+
+    def _normalise_regional(self, df: pd.DataFrame, src: SourceFile) -> pd.DataFrame:
+        nuts_map = load_region_map("IT")
+        df = df[df["REF_AREA"].isin(set(nuts_map.keys()))].copy()
         df["nuts_code"] = df["REF_AREA"].map(nuts_map)
 
-        # Sum across SEX (the dataflow has SEX=1/2 but no 'TOTAL' code).
         agg = (
             df.groupby(["nuts_code", "REF_AREA", "category", "TIME_PERIOD"], as_index=False)
             .agg(
@@ -118,54 +143,97 @@ class ITAdapter(Adapter):
                 native_examples=("TYPE_CRIME", lambda s: ", ".join(sorted(set(s))[:3])),
             )
         )
-
         latest_year = int(agg["TIME_PERIOD"].max())
         agg = agg[agg["TIME_PERIOD"] == latest_year]
 
         retrieved_at = pd.Timestamp.now(tz="UTC").tz_localize(None)
         rows: list[dict] = []
         for _, r in agg.iterrows():
-            nuts = str(r["nuts_code"])  # NUTS-2021
+            nuts = str(r["nuts_code"])
             pop = population(nuts)
             count = int(r["count"])
             rate = (count / pop * 100_000) if pop else None
-            rows.append(
-                {
-                    "source_country": "IT",
-                    "source_authority": self.authority,
-                    "source_url": SDMX_URL,
-                    "source_file_hash": src.sha256,
-                    "retrieved_at": retrieved_at,
-                    "period_start": pd.Timestamp(date(latest_year, 1, 1)),
-                    "period_end": pd.Timestamp(date(latest_year, 12, 31)),
-                    "period_type": "year",
-                    "region_code": nuts,
-                    "region_level": 2,
-                    "crime_category": str(r["category"]),
-                    "crime_category_native": str(r["native_examples"]),
-                    "suspect_dim": "total",
-                    "suspect_dim_value": None,
-                    "count": count,
-                    "denominator_population": pop,
-                    "denominator_source": "Eurostat NUTS 2021" if pop else None,
-                    "rate_per_100k": rate,
-                    "notes": (
-                        "ISTAT dataflow 73_230_DF_DCCV_AUTVITTPS_6, VICTIM count summed "
-                        "across SEX. Foreign-background (citizenship) lives in sibling "
-                        "dataflow ...AUTVITTPS_5; not yet integrated."
-                    ),
-                }
-            )
-
+            rows.append(self._row(
+                period_year=latest_year, nuts=nuts, level=2, category=str(r["category"]),
+                native_examples=str(r["native_examples"]), suspect_dim="total",
+                count=count, pop=pop, rate=rate, retrieved_at=retrieved_at, src=src,
+                source_url=SDMX_URL,
+                notes="ISTAT dataflow AUTVITTPS_6, VICTIM count summed across SEX.",
+            ))
         out = pd.DataFrame(rows)
         if not out.empty:
             out["count"] = out["count"].astype(int)
             out["region_level"] = out["region_level"].astype(int)
             out["denominator_population"] = out["denominator_population"].astype("Int64")
-
-        log.info(
-            "[IT] normalised %d rows across %d regions (year %d)",
-            len(out), out["region_code"].nunique() if not out.empty else 0,
-            latest_year,
-        )
+        log.info("[IT/regional] %d rows across %d regions (year %d)",
+                 len(out), out["region_code"].nunique() if not out.empty else 0, latest_year)
         return out
+
+    def _normalise_fb(self, df: pd.DataFrame, src: SourceFile) -> pd.DataFrame:
+        # FB file is IT-only (REF_AREA=IT) with CITIZENSHIP populated.
+        # AGE has no TOTAL; sum across all age bands too.
+        df = df[df["REF_AREA"] == "IT"].copy()
+        df["suspect_dim"] = df["CITIZENSHIP"].map(CITIZENSHIP_TO_SUSPECT_DIM)
+
+        agg = (
+            df.groupby(["category", "suspect_dim", "TIME_PERIOD"], as_index=False)
+            .agg(
+                count=("OBS_VALUE", "sum"),
+                native_examples=("TYPE_CRIME", lambda s: ", ".join(sorted(set(s))[:3])),
+            )
+        )
+        latest_year = int(agg["TIME_PERIOD"].max())
+        agg = agg[agg["TIME_PERIOD"] == latest_year]
+
+        retrieved_at = pd.Timestamp.now(tz="UTC").tz_localize(None)
+        pop_it = population("IT")
+
+        rows: list[dict] = []
+        for _, r in agg.iterrows():
+            count = int(r["count"])
+            rate = (count / pop_it * 100_000) if pop_it else None
+            rows.append(self._row(
+                period_year=latest_year, nuts="IT", level=0, category=str(r["category"]),
+                native_examples=str(r["native_examples"]), suspect_dim=str(r["suspect_dim"]),
+                count=count, pop=pop_it, rate=rate, retrieved_at=retrieved_at, src=src,
+                source_url=SDMX_URL_FB,
+                notes=(
+                    "ISTAT dataflow AUTVITTPS_5 — VICTIM count summed across SEX + AGE "
+                    "bands. CITIZENSHIP: ITL→national, FRG→foreign, TOTAL→total. "
+                    "National-level only (regional FB not published in this dataflow)."
+                ),
+            ))
+        out = pd.DataFrame(rows)
+        if not out.empty:
+            out["count"] = out["count"].astype(int)
+            out["region_level"] = out["region_level"].astype(int)
+            out["denominator_population"] = out["denominator_population"].astype("Int64")
+        log.info("[IT/fb] %d rows at NUTS-0 (year %d)", len(out), latest_year)
+        return out
+
+    @staticmethod
+    def _row(*, period_year: int, nuts: str, level: int, category: str,
+             native_examples: str, suspect_dim: str, count: int, pop: int | None,
+             rate: float | None, retrieved_at: pd.Timestamp, src: SourceFile,
+             source_url: str, notes: str) -> dict:
+        return {
+            "source_country": "IT",
+            "source_authority": "ISTAT",
+            "source_url": source_url,
+            "source_file_hash": src.sha256,
+            "retrieved_at": retrieved_at,
+            "period_start": pd.Timestamp(date(period_year, 1, 1)),
+            "period_end": pd.Timestamp(date(period_year, 12, 31)),
+            "period_type": "year",
+            "region_code": nuts,
+            "region_level": level,
+            "crime_category": category,
+            "crime_category_native": native_examples,
+            "suspect_dim": suspect_dim,
+            "suspect_dim_value": None,
+            "count": count,
+            "denominator_population": pop,
+            "denominator_source": "Eurostat / ISTAT mid-2024" if pop else None,
+            "rate_per_100k": rate,
+            "notes": notes,
+        }

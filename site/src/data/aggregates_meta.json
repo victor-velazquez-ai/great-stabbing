@@ -2,15 +2,23 @@
   {
     "country": "DE",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-01T16:44:58.596967",
+    "retrieved_at": "2026-06-03T15:14:21.155273",
     "n_rows": 15,
     "n_regions": 1,
     "authority": "BKA"
   },
   {
+    "country": "ES",
+    "latest_period_end": "2024-12-31T00:00:00",
+    "retrieved_at": "2026-06-03T15:14:25.163381",
+    "n_rows": 208,
+    "n_regions": 52,
+    "authority": "Ministerio del Interior"
+  },
+  {
     "country": "FR",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-01T16:43:58.728733",
+    "retrieved_at": "2026-06-03T15:13:02.589679",
     "n_rows": 404,
     "n_regions": 101,
     "authority": "SSMSI"
@@ -18,15 +26,15 @@
   {
     "country": "IT",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-01T16:44:39.724551",
-    "n_rows": 63,
-    "n_regions": 21,
+    "retrieved_at": "2026-06-03T15:13:57.156228",
+    "n_rows": 72,
+    "n_regions": 22,
     "authority": "ISTAT"
   },
   {
     "country": "SE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-01T16:45:00.167530",
+    "retrieved_at": "2026-06-03T15:14:22.986556",
     "n_rows": 4,
     "n_regions": 1,
     "authority": "BR\u00c5"
@@ -34,7 +42,7 @@
   {
     "country": "UK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-01T16:43:56.340216",
+    "retrieved_at": "2026-06-03T15:13:00.198440",
     "n_rows": 50,
     "n_regions": 10,
     "authority": "ONS"
