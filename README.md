@@ -2,7 +2,7 @@
 
 > Europe-wide, interactive map and dashboard of violent crime — stabbings, shootings, fatal beatings — with regional granularity. Inspired by [hoyodecrimen.com](https://hoyodecrimen.com).
 
-**Status:** 3/6 MVP countries live (UK + FR + IT), 3 scaffolded (DE/SE/ES). Public URL targeted for Week 11.
+**Status:** 6/6 MVP countries live. ES at NUTS-3 (last in), DE at NUTS-1 (16 Bundesländer) + NUTS-0 with foreign-background, IT with foreign-background at NUTS-0. Public URL pending CF Pages token.
 
 See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the product plan and [TECHNICAL_PLAN.md](./TECHNICAL_PLAN.md) for the build plan.
 
@@ -102,10 +102,10 @@ Each adapter writes to `data/parquet/crime_aggregates.parquet` (idempotent upser
 |---|---|---|---|
 | 🇬🇧 UK | ONS PFA tables | **live** | year ending December 2025 |
 | 🇫🇷 FR | SSMSI Interstats | **live** | year 2025 |
-| 🇩🇪 DE | BKA PKS | scaffolded — manual fallback only | — |
-| 🇮🇹 IT | ISTAT (dataflow 73_230_DF_DCCV_AUTVITTPS_6) | **live** | year 2024 |
-| 🇸🇪 SE | BRÅ | scaffolded — manual fallback only | — |
-| 🇪🇸 ES | Min. Interior | scaffolded — manual fallback only | — |
+| 🇩🇪 DE | BKA PKS Zeitreihen + Land-XLSX | **live** | year 2024, NUTS-0 + NUTS-1 |
+| 🇮🇹 IT | ISTAT (dataflows AUTVITTPS_6 + _5 for FB) | **live** | year 2024, NUTS-2 + NUTS-0 |
+| 🇸🇪 SE | BRÅ Anmälda brott (national XLSX) | **live** | year 2025, NUTS-0 |
+| 🇪🇸 ES | Min. Interior SEC (table 03002) | **live** | year 2024, NUTS-3 (52 provincias) |
 
 ---
 
