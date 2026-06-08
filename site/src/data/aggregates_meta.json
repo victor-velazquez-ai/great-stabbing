@@ -2,7 +2,7 @@
   {
     "country": "DE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:53:18.830575",
+    "retrieved_at": "2026-06-08T01:04:48.877953",
     "n_rows": 95,
     "n_regions": 17,
     "authority": "BKA"
@@ -10,7 +10,7 @@
   {
     "country": "DK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T00:25:27.937058",
+    "retrieved_at": "2026-06-08T01:05:00.386990",
     "n_rows": 300,
     "n_regions": 5,
     "authority": "Danmarks Statistik"
@@ -18,7 +18,7 @@
   {
     "country": "ES",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:53:23.312168",
+    "retrieved_at": "2026-06-08T01:04:54.861013",
     "n_rows": 2080,
     "n_regions": 52,
     "authority": "Ministerio del Interior"
@@ -26,7 +26,7 @@
   {
     "country": "FR",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:51:52.043835",
+    "retrieved_at": "2026-06-08T01:03:44.114244",
     "n_rows": 4040,
     "n_regions": 101,
     "authority": "SSMSI"
@@ -34,7 +34,7 @@
   {
     "country": "IE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T00:27:13.480106",
+    "retrieved_at": "2026-06-08T01:05:01.379612",
     "n_rows": 30,
     "n_regions": 1,
     "authority": "CSO"
@@ -42,7 +42,7 @@
   {
     "country": "IT",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:53:01.287721",
+    "retrieved_at": "2026-06-08T01:04:30.057855",
     "n_rows": 639,
     "n_regions": 22,
     "authority": "ISTAT"
@@ -50,15 +50,15 @@
   {
     "country": "NL",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T00:33:53.923025",
-    "n_rows": 600,
+    "retrieved_at": "2026-06-08T01:05:23.469678",
+    "n_rows": 480,
     "n_regions": 12,
     "authority": "CBS"
   },
   {
     "country": "SE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:53:20.368933",
+    "retrieved_at": "2026-06-08T01:04:50.899802",
     "n_rows": 4,
     "n_regions": 1,
     "authority": "BR\u00c5"
@@ -66,7 +66,7 @@
   {
     "country": "UK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-03T19:51:49.704285",
+    "retrieved_at": "2026-06-08T01:03:42.073633",
     "n_rows": 50,
     "n_regions": 10,
     "authority": "ONS"
