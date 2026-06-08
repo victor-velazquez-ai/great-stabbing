@@ -75,6 +75,33 @@ def main() -> None:
             "count": int(cnt) if cnt is not None else None,
             "rate": float(rate) if rate is not None else None,
         }
+
+    # Compute violent_total where the source doesn't publish an umbrella
+    # category directly. Sum of homicide + attempted_homicide +
+    # assault_serious + sexual_assault + robbery_violent. We flag this
+    # as derived so the methodology page can disclose it.
+    DERIVED_PARTS = ("homicide", "attempted_homicide", "assault_serious",
+                     "sexual_assault", "robbery_violent")
+    for region, by_year in history.items():
+        for yr, cats in by_year.items():
+            if "violent_total" in cats:
+                continue
+            count_sum = 0; rate_sum = 0.0
+            have_any_rate = False; have_any_count = False
+            for p in DERIVED_PARTS:
+                entry = cats.get(p)
+                if not entry:
+                    continue
+                if entry.get("count") is not None:
+                    count_sum += entry["count"]; have_any_count = True
+                if entry.get("rate") is not None:
+                    rate_sum += entry["rate"]; have_any_rate = True
+            if have_any_count or have_any_rate:
+                cats["violent_total"] = {
+                    "count": count_sum if have_any_count else None,
+                    "rate": rate_sum if have_any_rate else None,
+                    "derived": True,
+                }
     (OUT_DIR / "history.json").write_text(
         json.dumps(history, default=str, separators=(",", ":")), encoding="utf-8"
     )

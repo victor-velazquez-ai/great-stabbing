@@ -2,7 +2,7 @@
   {
     "country": "AT",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:34.036100",
+    "retrieved_at": "2026-06-08T03:06:24.910483",
     "n_rows": 50,
     "n_regions": 1,
     "authority": "Eurostat (CRIM_OFF_CAT)"
@@ -10,7 +10,7 @@
   {
     "country": "BE",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:57.250561",
+    "retrieved_at": "2026-06-08T03:06:46.628208",
     "n_rows": 50,
     "n_regions": 1,
     "authority": "Eurostat (CRIM_OFF_CAT)"
@@ -18,7 +18,7 @@
   {
     "country": "DE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:53:50.887763",
+    "retrieved_at": "2026-06-08T03:05:52.851627",
     "n_rows": 95,
     "n_regions": 17,
     "authority": "BKA"
@@ -26,7 +26,7 @@
   {
     "country": "DK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:04.204797",
+    "retrieved_at": "2026-06-08T03:06:03.959655",
     "n_rows": 300,
     "n_regions": 5,
     "authority": "Danmarks Statistik"
@@ -34,7 +34,7 @@
   {
     "country": "ES",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:53:55.804698",
+    "retrieved_at": "2026-06-08T03:05:58.445157",
     "n_rows": 2080,
     "n_regions": 52,
     "authority": "Ministerio del Interior"
@@ -42,39 +42,39 @@
   {
     "country": "FR",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:52:52.041026",
-    "n_rows": 4040,
+    "retrieved_at": "2026-06-08T03:04:53.570408",
+    "n_rows": 5050,
     "n_regions": 101,
     "authority": "SSMSI"
   },
   {
     "country": "IE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:05.324492",
-    "n_rows": 30,
+    "retrieved_at": "2026-06-08T03:06:04.856726",
+    "n_rows": 40,
     "n_regions": 1,
     "authority": "CSO"
   },
   {
     "country": "IT",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:53:35.602582",
-    "n_rows": 639,
+    "retrieved_at": "2026-06-08T03:06:52.158535",
+    "n_rows": 649,
     "n_regions": 22,
     "authority": "ISTAT"
   },
   {
     "country": "NL",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:22.655677",
-    "n_rows": 480,
-    "n_regions": 12,
-    "authority": "CBS"
+    "retrieved_at": "2026-06-08T03:06:59.248295",
+    "n_rows": 490,
+    "n_regions": 13,
+    "authority": "Eurostat (CRIM_OFF_CAT, supplement)"
   },
   {
     "country": "NO",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:51.464881",
+    "retrieved_at": "2026-06-08T03:06:41.134227",
     "n_rows": 50,
     "n_regions": 1,
     "authority": "Eurostat (CRIM_OFF_CAT)"
@@ -82,7 +82,7 @@
   {
     "country": "PT",
     "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:54:43.261330",
+    "retrieved_at": "2026-06-08T03:06:35.884883",
     "n_rows": 40,
     "n_regions": 1,
     "authority": "Eurostat (CRIM_OFF_CAT)"
@@ -90,7 +90,7 @@
   {
     "country": "SE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:53:53.203481",
+    "retrieved_at": "2026-06-08T03:05:55.003112",
     "n_rows": 4,
     "n_regions": 1,
     "authority": "BR\u00c5"
@@ -98,7 +98,7 @@
   {
     "country": "UK",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T02:52:49.660453",
+    "retrieved_at": "2026-06-08T03:04:51.173978",
     "n_rows": 50,
     "n_regions": 10,
     "authority": "ONS"

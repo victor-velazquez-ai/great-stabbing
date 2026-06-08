@@ -5,10 +5,17 @@ mapping:
   "Murder (0111)": homicide
   "Manslaughter (0112)": homicide
   "Infanticide (0113)": homicide
-  "Attempts/threats to murder, assaults, harassments and related offences (03)": assault_serious
-  "Rape & sexual assault (021)": sexual_assault
-  "Sexual offences against children (022)": sexual_assault
-  "Robbery, extortion and hijacking offences (06)": robbery_violent
+  "Assault causing harm, poisoning (034)": assault_serious
+  "Other assault (035)": assault_serious
+  "Rape of a male or female (0211)": sexual_assault
+  "Aggravated sexual assault (0214)": sexual_assault
+  "Sexual assault (not aggravated) (0215)": sexual_assault
+  "Sexual offence involving mentally impaired person (0213)": sexual_assault
+  "Other sexual offences (022)": sexual_assault
+  "Robbery of an establishment or institution (0611)": robbery_violent
+  "Robbery of cash or goods in transit (0612)": robbery_violent
+  "Robbery from the person (0613)": robbery_violent
+  "Carjacking, hijacking/unlawful seizure of aircraft/vessel (0631)": robbery_violent
 
 skip: []
 notes: |

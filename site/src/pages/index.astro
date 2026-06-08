@@ -290,6 +290,16 @@ const mvpStatus = [
       const entry = history[code]?.[String(y)]?.[metric];
       if (entry && entry.rate !== null && entry.rate !== undefined) return entry.rate;
     }
+    // Country-level fallback: if a sub-national region has no data for this
+    // metric, use the NUTS-0 (2-char ISO) rate so the polygon doesn't go grey.
+    // Documented as a "national average" caveat on the methodology page.
+    const cc = code.slice(0, 2);
+    if (cc !== code) {
+      for (let y = yr; y >= yr - 4; y--) {
+        const entry = history[cc]?.[String(y)]?.[metric];
+        if (entry && entry.rate !== null && entry.rate !== undefined) return entry.rate;
+      }
+    }
     return null;
   }
 

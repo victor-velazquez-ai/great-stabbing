@@ -88,10 +88,12 @@ class FRAdapter(Adapter):
             encoding="utf-8-sig",  # BOM-prefixed
             decimal=",",
         )
-        # Keep only "Victime" units (per-victim count). For homicide categories
-        # this disambiguates incidents (Faits) from victims (Victimes).
+        # Most categories ship Victime (per-victim) counts. Robbery
+        # categories ("Vols violents sans arme", "Vols avec armes") are
+        # only published as Infraction (offence). Keep both units; later
+        # normalise() picks Victime if available, else Infraction.
         if "unite_de_compte" in df.columns:
-            df = df[df["unite_de_compte"] == "Victime"].copy()
+            df = df[df["unite_de_compte"].isin(["Victime", "Infraction"])].copy()
 
         df["annee"] = df["annee"].astype(int)
         # Coerce numeric columns explicitly — `nombre` is read as string due
@@ -120,6 +122,14 @@ class FRAdapter(Adapter):
         df = df.dropna(subset=["category"])
         df["nuts"] = df["Code_departement"].map(dep_to_nuts)
         df = df.dropna(subset=["nuts"])
+        # Per (indicateur), Victime is preferred (matches our schema's
+        # per-victim semantics); Infraction is the fallback for robbery-
+        # type indicators that don't publish Victime.
+        ind_units = df.groupby("indicateur")["unite_de_compte"].agg(set)
+        keep_ind: dict[str, str] = {}
+        for ind, units in ind_units.items():
+            keep_ind[ind] = "Victime" if "Victime" in units else "Infraction"
+        df = df[df.apply(lambda r: r["unite_de_compte"] == keep_ind[r["indicateur"]], axis=1)]
 
         # Emit recent history (last 10 calendar years) so the homepage time
         # slider has something to show.

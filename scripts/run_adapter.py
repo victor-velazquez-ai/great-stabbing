@@ -32,6 +32,9 @@ ADAPTERS = {
     "PT": ("adapters.pt.adapter", "PTAdapter"),
     "NO": ("adapters.no.adapter", "NOAdapter"),
     "BE": ("adapters.be.adapter", "BEAdapter"),
+    # Eurostat supplements for countries with category gaps
+    "IT-SUPP": ("adapters._supplement_runners", "ITSupplement"),
+    "NL-SUPP": ("adapters._supplement_runners", "NLSupplement"),
 }
 
 
