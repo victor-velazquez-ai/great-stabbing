@@ -88,7 +88,7 @@ class Adapter(ABC):
                       AND n.region_code = existing.region_code
                       AND n.crime_category = existing.crime_category
                       AND n.suspect_dim = existing.suspect_dim
-                      AND COALESCE(n.suspect_dim_value, '') = COALESCE(existing.suspect_dim_value, '')
+                      AND COALESCE(CAST(n.suspect_dim_value AS VARCHAR), '') = COALESCE(CAST(existing.suspect_dim_value AS VARCHAR), '')
                 )
                 UNION ALL
                 SELECT * FROM new_rows

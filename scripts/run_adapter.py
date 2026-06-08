@@ -32,9 +32,15 @@ ADAPTERS = {
     "PT": ("adapters.pt.adapter", "PTAdapter"),
     "NO": ("adapters.no.adapter", "NOAdapter"),
     "BE": ("adapters.be.adapter", "BEAdapter"),
-    # Eurostat supplements for countries with category gaps
-    "IT-SUPP": ("adapters._supplement_runners", "ITSupplement"),
+    "CH": ("adapters.ch.adapter", "CHAdapter"),
+    # Eurostat NUTS-0 supplements — ensure every country has NUTS-0 data
+    # for all 5 categories so the homepage map's country-level fallback works.
+    "UK-SUPP": ("adapters._supplement_runners", "UKSupplement"),
+    "FR-SUPP": ("adapters._supplement_runners", "FRSupplement"),
+    "ES-SUPP": ("adapters._supplement_runners", "ESSupplement"),
+    "DK-SUPP": ("adapters._supplement_runners", "DKSupplement"),
     "NL-SUPP": ("adapters._supplement_runners", "NLSupplement"),
+    "IT-SUPP": ("adapters._supplement_runners", "ITSupplement"),
 }
 
 
@@ -67,6 +73,9 @@ def main() -> int:
             rc = run(c) or rc
         except NotImplementedError as e:
             log.warning("[%s] stub: %s", c.upper(), e)
+            rc = rc or 1
+        except Exception as e:  # noqa: BLE001 — keep batch going through individual failures
+            log.error("[%s] failed: %s: %s", c.upper(), type(e).__name__, e)
             rc = rc or 1
     return rc
 

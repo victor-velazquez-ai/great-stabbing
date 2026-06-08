@@ -3,28 +3,28 @@
     {
       "region_code": "IT",
       "crime_category": "assault_serious",
-      "total": 18667,
+      "total": 1201,
       "national": 15215,
       "foreign": 3452,
-      "foreign_share_pct": 18.5,
+      "foreign_share_pct": 287.4,
       "period_end": "2024-12-31T00:00:00"
     },
     {
       "region_code": "IT",
       "crime_category": "homicide",
-      "total": 328,
+      "total": 336,
       "national": 244,
       "foreign": 84,
-      "foreign_share_pct": 25.6,
+      "foreign_share_pct": 25.0,
       "period_end": "2024-12-31T00:00:00"
     },
     {
       "region_code": "IT",
       "crime_category": "sexual_assault",
-      "total": 5642,
+      "total": 7423,
       "national": 4374,
       "foreign": 1268,
-      "foreign_share_pct": 22.5,
+      "foreign_share_pct": 17.1,
       "period_end": "2024-12-31T00:00:00"
     }
   ]

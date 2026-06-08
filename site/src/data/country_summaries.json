@@ -41,6 +41,27 @@
       "region_name": "Belgique/Belgi\u00eb"
     }
   ],
+  "CH": [
+    {
+      "region_code": "CH",
+      "region_level": 0,
+      "homicide_count": 45,
+      "homicide_rate": 0.5056179775280899,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 1029,
+      "assault_rate": 11.561797752808989,
+      "robbery_count": 2113,
+      "robbery_rate": 23.741573033707866,
+      "sexual_assault_count": 4830,
+      "sexual_assault_rate": 54.26966292134831,
+      "population": 8900000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Schweiz/Suisse/Svizzera"
+    }
+  ],
   "DE": [
     {
       "region_code": "DE5",
@@ -921,6 +942,25 @@
       "region_name": "Girona"
     },
     {
+      "region_code": "ES",
+      "region_level": 0,
+      "homicide_count": 349,
+      "homicide_rate": 0.7179592676404032,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 28724,
+      "assault_rate": 59.0907220736474,
+      "robbery_count": 62976,
+      "robbery_rate": 129.5535897963382,
+      "sexual_assault_count": 19655,
+      "sexual_assault_rate": 40.43406706439004,
+      "population": 48610000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Espa\u00f1a"
+    },
+    {
       "region_code": "ES620",
       "region_level": 3,
       "homicide_count": 11,
@@ -1244,25 +1284,6 @@
       "region_name": "Ciudad Real"
     },
     {
-      "region_code": "ES411",
-      "region_level": 3,
-      "homicide_count": 0,
-      "homicide_rate": 0.0,
-      "violent_total_count": null,
-      "violent_total_rate": null,
-      "assault_count": 195,
-      "assault_rate": 123.30846085746806,
-      "robbery_count": 36,
-      "robbery_rate": 22.764638927532566,
-      "sexual_assault_count": 39,
-      "sexual_assault_rate": 24.661692171493616,
-      "population": 158140,
-      "period_start": "2024-01-01T00:00:00",
-      "period_end": "2024-12-31T00:00:00",
-      "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
-      "region_name": "\u00c1vila"
-    },
-    {
       "region_code": "ES630",
       "region_level": 3,
       "homicide_count": 0,
@@ -1299,25 +1320,6 @@
       "period_end": "2024-12-31T00:00:00",
       "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
       "region_name": "Melilla"
-    },
-    {
-      "region_code": "ES417",
-      "region_level": 3,
-      "homicide_count": 0,
-      "homicide_rate": 0.0,
-      "violent_total_count": null,
-      "violent_total_rate": null,
-      "assault_count": 108,
-      "assault_rate": 121.36195078098662,
-      "robbery_count": 8,
-      "robbery_rate": 8.989774131924936,
-      "sexual_assault_count": 17,
-      "sexual_assault_rate": 19.10327003034049,
-      "population": 88990,
-      "period_start": "2024-01-01T00:00:00",
-      "period_end": "2024-12-31T00:00:00",
-      "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
-      "region_name": "Soria"
     },
     {
       "region_code": "ES418",
@@ -1375,6 +1377,44 @@
       "period_end": "2024-12-31T00:00:00",
       "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
       "region_name": "Zamora"
+    },
+    {
+      "region_code": "ES411",
+      "region_level": 3,
+      "homicide_count": 0,
+      "homicide_rate": 0.0,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 195,
+      "assault_rate": 123.30846085746806,
+      "robbery_count": 36,
+      "robbery_rate": 22.764638927532566,
+      "sexual_assault_count": 39,
+      "sexual_assault_rate": 24.661692171493616,
+      "population": 158140,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
+      "region_name": "\u00c1vila"
+    },
+    {
+      "region_code": "ES417",
+      "region_level": 3,
+      "homicide_count": 0,
+      "homicide_rate": 0.0,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 108,
+      "assault_rate": 121.36195078098662,
+      "robbery_count": 8,
+      "robbery_rate": 8.989774131924936,
+      "sexual_assault_count": 17,
+      "sexual_assault_rate": 19.10327003034049,
+      "population": 88990,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://estadisticasdecriminalidad.ses.mir.es/sec/jaxiPx/files/_px/es/csv/Datos3/l0/03002.csv?nocab=1",
+      "region_name": "Soria"
     },
     {
       "region_code": "ES421",
@@ -3549,6 +3589,25 @@
       "region_name": "Sicilia"
     },
     {
+      "region_code": "IT",
+      "region_level": 0,
+      "homicide_count": 336,
+      "homicide_rate": 0.5699745547073791,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": 1201,
+      "assault_rate": 2.037319762510602,
+      "robbery_count": 29351,
+      "robbery_rate": 49.78965224766752,
+      "sexual_assault_count": 7423,
+      "sexual_assault_rate": 12.592027141645461,
+      "population": 58950000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Italia"
+    },
+    {
       "region_code": "ITH1",
       "region_level": 2,
       "homicide_count": 3,
@@ -3585,25 +3644,6 @@
       "period_end": "2024-12-31T00:00:00",
       "source_url": "https://esploradati.istat.it/SDMXWS/rest/data/73_230_DF_DCCV_AUTVITTPS_6/?format=csv&dimensionAtObservation=AllDimensions",
       "region_name": "Lazio"
-    },
-    {
-      "region_code": "IT",
-      "region_level": 0,
-      "homicide_count": 328,
-      "homicide_rate": 0.556403731976251,
-      "violent_total_count": null,
-      "violent_total_rate": null,
-      "assault_count": 18667,
-      "assault_rate": 31.66581849024597,
-      "robbery_count": 29351,
-      "robbery_rate": 49.78965224766752,
-      "sexual_assault_count": 5642,
-      "sexual_assault_rate": 9.570822731128075,
-      "population": 58950000,
-      "period_start": "2024-01-01T00:00:00",
-      "period_end": "2024-12-31T00:00:00",
-      "source_url": "https://esploradati.istat.it/SDMXWS/rest/data/73_230_DF_DCCV_AUTVITTPS_5/?format=csv&dimensionAtObservation=AllDimensions",
-      "region_name": "Italia"
     },
     {
       "region_code": "ITI1",

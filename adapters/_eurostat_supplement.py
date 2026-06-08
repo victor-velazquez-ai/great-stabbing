@@ -1,10 +1,18 @@
-"""Eurostat-supplement adapters for countries where the native source
-covers most but not all harmonised categories.
+"""Eurostat-supplement adapters.
 
-We emit Eurostat-only rows at NUTS-0 for the specific (country, category)
-pairs listed below. The native-source rows (often at NUTS-2/3) remain
-canonical; the Eurostat row is a national fallback that lets the homepage
-metric selector show shading on that country instead of grey.
+Used in two ways:
+1. **Country-level fallback** — write NUTS-0 rows for countries whose
+   native source only publishes at NUTS-1/2/3. The homepage map's
+   valueFor() falls back to NUTS-0 when a sub-national region has no
+   data for the selected metric, so this guarantees no polygon goes
+   grey just because a particular country's source slices crime
+   differently.
+
+2. **Per-category gap fill** — same mechanism but applied to specific
+   country×category pairs where the native source publishes other
+   categories.
+
+All rows come from Eurostat dataset CRIM_OFF_CAT with unit=NR.
 """
 
 from __future__ import annotations
@@ -27,19 +35,30 @@ EUROSTAT_URL = (
     "crim_off_cat?format=SDMX-CSV&compressed=false"
 )
 
-# country → list of (iccs_code, harmonised_category) we want to add
-COVERAGE_GAPS: dict[str, list[tuple[str, str]]] = {
-    "IT": [("ICCS0401", "robbery_violent")],
-    "NL": [("ICCS0101", "homicide")],
+# Default: all 5 harmonised categories.
+ALL_CATEGORIES: list[tuple[str, str]] = [
+    ("ICCS0101", "homicide"),
+    ("ICCS0102", "attempted_homicide"),
+    ("ICCS020111", "assault_serious"),
+    ("ICCS0301", "sexual_assault"),
+    ("ICCS0401", "robbery_violent"),
+]
+
+# Per-country override. If a country isn't listed here, we use ALL_CATEGORIES.
+# Listed entries restrict to specific (iccs, category) pairs only.
+COUNTRY_OVERRIDES: dict[str, list[tuple[str, str]]] = {
+    # Empty list → use ALL_CATEGORIES (default)
 }
 
 
 class EurostatSupplementAdapter(Adapter):
-    """Pulls Eurostat crim_off_cat for the categories listed in
-    COVERAGE_GAPS[self.country]. NUTS-0 rows only."""
+    """Pulls Eurostat crim_off_cat for the country and writes NUTS-0 rows.
+
+    Subclass needs to set `country`.
+    """
 
     country = ""
-    authority = "Eurostat (CRIM_OFF_CAT, supplement)"
+    authority = "Eurostat (CRIM_OFF_CAT, NUTS-0 supplement)"
     cadence = "annual"
 
     def discover(self) -> list[SourceFile]:
@@ -52,11 +71,13 @@ class EurostatSupplementAdapter(Adapter):
             return []
         return [src]
 
+    def _categories(self) -> list[tuple[str, str]]:
+        return COUNTRY_OVERRIDES.get(self.country, ALL_CATEGORIES)
+
     def parse(self, src: SourceFile) -> pd.DataFrame:
-        gaps = COVERAGE_GAPS.get(self.country, [])
-        if not gaps:
-            return pd.DataFrame()
-        wanted_iccs = {code for code, _ in gaps}
+        cats = self._categories()
+        wanted_iccs = {c for c, _ in cats}
+        iccs_to_cat = dict(cats)
         path = REPO_ROOT / src.local_path
         df = pd.read_csv(path, low_memory=False)
         df = df[
@@ -64,13 +85,18 @@ class EurostatSupplementAdapter(Adapter):
             & (df["iccs"].isin(wanted_iccs))
             & (df["unit"] == "NR")
         ]
+        if df.empty:
+            log.warning(
+                "[%s/supp] Eurostat has no data for this country — likely dropped from the dataset (Brexit etc.)",
+                self.country,
+            )
+            return pd.DataFrame(columns=["year", "category", "iccs", "count"])
         df["count"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce").fillna(0).astype(int)
         df["year"] = df["TIME_PERIOD"].astype(int)
-        iccs_to_cat = dict(gaps)
         df["category"] = df["iccs"].map(iccs_to_cat)
         log.info(
-            "[%s/supp] parsed %d rows across %s",
-            self.country, len(df), sorted(df["iccs"].unique()),
+            "[%s/supp] parsed %d rows × %d cats",
+            self.country, len(df), df["iccs"].nunique(),
         )
         return df[["year", "category", "iccs", "count"]].reset_index(drop=True)
 
@@ -97,7 +123,7 @@ class EurostatSupplementAdapter(Adapter):
                 "region_code": self.country,
                 "region_level": 0,
                 "crime_category": str(r["category"]),
-                "crime_category_native": f"Eurostat {r['iccs']} (supplement)",
+                "crime_category_native": f"Eurostat {r['iccs']} (NUTS-0)",
                 "suspect_dim": "total",
                 "suspect_dim_value": None,
                 "count": count,
@@ -105,8 +131,9 @@ class EurostatSupplementAdapter(Adapter):
                 "denominator_source": "Eurostat / hand-curated" if pop else None,
                 "rate_per_100k": rate,
                 "notes": (
-                    f"Eurostat supplement — native source for {self.country} doesn't "
-                    f"publish this category in a comparable form."
+                    "Eurostat NUTS-0 supplement. The country-level rate is used "
+                    "as a fallback for sub-national regions whose native source "
+                    "doesn't publish this category."
                 ),
             })
         out = pd.DataFrame(rows)
@@ -114,4 +141,8 @@ class EurostatSupplementAdapter(Adapter):
             out["count"] = out["count"].astype(int)
             out["region_level"] = out["region_level"].astype(int)
             out["denominator_population"] = out["denominator_population"].astype("Int64")
+            # IT's native parquet stores suspect_dim_value as Int32; if we leave
+            # it as object/None DuckDB's UNION ALL chokes with "Could not convert
+            # string '' to INT32". Force nullable Int32 dtype.
+            out["suspect_dim_value"] = pd.array([None] * len(out), dtype="Int32")
         return out
