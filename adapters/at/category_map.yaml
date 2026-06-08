@@ -1,0 +1,3 @@
+mapping:
+  "TOTAL": homicide
+notes: Eurostat fallback at NUTS-0. BMI Bundesland data is PDF-only.

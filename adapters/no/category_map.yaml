@@ -1,0 +1,10 @@
+# Eurostat crim_hom_vrel — intentional homicide by victim-perpetrator
+# relationship. We sum across relationship types per (country, year, sex=T).
+mapping:
+  "TOTAL": homicide
+notes: |
+  Source: Eurostat dataset crim_hom_vrel. For Norway we use Eurostat at
+  NUTS-0 (rather than SSB's PXweb table 09405) because Eurostat
+  harmonises the homicide definition across countries, making
+  comparisons cleaner on the map. SSB-direct integration is a future
+  enhancement for the fylke breakdown.

@@ -1,4 +1,46 @@
 {
+  "AT": [
+    {
+      "region_code": "AT",
+      "region_level": 0,
+      "homicide_count": 78,
+      "homicide_rate": 0.8521796132415601,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": null,
+      "assault_rate": null,
+      "robbery_count": null,
+      "robbery_rate": null,
+      "sexual_assault_count": null,
+      "sexual_assault_rate": null,
+      "population": 9153000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "\u00d6sterreich"
+    }
+  ],
+  "BE": [
+    {
+      "region_code": "BE",
+      "region_level": 0,
+      "homicide_count": 166,
+      "homicide_rate": 1.4085702163767502,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": null,
+      "assault_rate": null,
+      "robbery_count": null,
+      "robbery_rate": null,
+      "sexual_assault_count": null,
+      "sexual_assault_rate": null,
+      "population": 11785000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Belgique/Belgi\u00eb"
+    }
+  ],
   "DE": [
     {
       "region_code": "DE5",
@@ -3982,6 +4024,48 @@
       "period_end": "2025-12-31T00:00:00",
       "source_url": "https://opendata.cbs.nl/ODataApi/odata/83648NED/TypedDataSet",
       "region_name": "Overijssel"
+    }
+  ],
+  "NO": [
+    {
+      "region_code": "NO",
+      "region_level": 0,
+      "homicide_count": 39,
+      "homicide_rate": 0.7027027027027026,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": null,
+      "assault_rate": null,
+      "robbery_count": null,
+      "robbery_rate": null,
+      "sexual_assault_count": null,
+      "sexual_assault_rate": null,
+      "population": 5550000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Norge"
+    }
+  ],
+  "PT": [
+    {
+      "region_code": "PT",
+      "region_level": 0,
+      "homicide_count": 72,
+      "homicide_rate": 0.6766917293233082,
+      "violent_total_count": null,
+      "violent_total_rate": null,
+      "assault_count": null,
+      "assault_rate": null,
+      "robbery_count": null,
+      "robbery_rate": null,
+      "sexual_assault_count": null,
+      "sexual_assault_rate": null,
+      "population": 10640000,
+      "period_start": "2024-01-01T00:00:00",
+      "period_end": "2024-12-31T00:00:00",
+      "source_url": "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/crim_off_cat?format=SDMX-CSV&compressed=false",
+      "region_name": "Portugal"
     }
   ],
   "SE": [
