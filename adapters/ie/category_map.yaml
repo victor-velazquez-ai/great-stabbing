@@ -1,0 +1,17 @@
+# CSO Ireland — Recorded crime incidents (CJA01) by ICCS offence category.
+# Foreign-background: not published.
+
+mapping:
+  "Murder (0111)": homicide
+  "Manslaughter (0112)": homicide
+  "Infanticide (0113)": homicide
+  "Attempts/threats to murder, assaults, harassments and related offences (03)": assault_serious
+  "Rape & sexual assault (021)": sexual_assault
+  "Sexual offences against children (022)": sexual_assault
+  "Robbery, extortion and hijacking offences (06)": robbery_violent
+
+skip: []
+notes: |
+  Source: CSO CJA01 — "Recorded crime incidents" annual, national-only.
+  Per-Garda-Division breakdown is not openly published in PxStat;
+  follow-up to find regional source.

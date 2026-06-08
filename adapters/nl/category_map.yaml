@@ -1,0 +1,13 @@
+# CBS 83648NED — Geregistreerde criminaliteit; soort misdrijf, regio.
+
+mapping:
+  "CRI3400": homicide
+  "CRI3100": assault_serious
+  "CRI3300": sexual_assault
+  "CRI1110": robbery_violent
+  "CRI3000": violent_total
+skip: []
+notes: |
+  CBS publishes 12 provinces × 75 crime categories. We use the headline
+  parent codes. CRI3400 (Levensmisdrijf) is the closest to "homicide" but
+  Dutch definition is broader than UK ONS — see methodology.

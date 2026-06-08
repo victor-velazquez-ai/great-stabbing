@@ -8,6 +8,14 @@
     "authority": "BKA"
   },
   {
+    "country": "DK",
+    "latest_period_end": "2025-12-31T00:00:00",
+    "retrieved_at": "2026-06-08T00:25:27.937058",
+    "n_rows": 300,
+    "n_regions": 5,
+    "authority": "Danmarks Statistik"
+  },
+  {
     "country": "ES",
     "latest_period_end": "2024-12-31T00:00:00",
     "retrieved_at": "2026-06-03T19:53:23.312168",
@@ -24,12 +32,28 @@
     "authority": "SSMSI"
   },
   {
+    "country": "IE",
+    "latest_period_end": "2025-12-31T00:00:00",
+    "retrieved_at": "2026-06-08T00:27:13.480106",
+    "n_rows": 30,
+    "n_regions": 1,
+    "authority": "CSO"
+  },
+  {
     "country": "IT",
     "latest_period_end": "2024-12-31T00:00:00",
     "retrieved_at": "2026-06-03T19:53:01.287721",
     "n_rows": 639,
     "n_regions": 22,
     "authority": "ISTAT"
+  },
+  {
+    "country": "NL",
+    "latest_period_end": "2025-12-31T00:00:00",
+    "retrieved_at": "2026-06-08T00:33:53.923025",
+    "n_rows": 600,
+    "n_regions": 12,
+    "authority": "CBS"
   },
   {
     "country": "SE",

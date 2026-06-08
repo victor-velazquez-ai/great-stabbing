@@ -1,0 +1,35 @@
+# Danmarks Statistik (Statbank) STRAF11 — Reported criminal offences.
+#
+# OVERTRÆD values are in Danish. Confirmed against live data 2026-06.
+
+mapping:
+  "Manddrab": homicide
+  "Forsøg på manddrab": attempted_homicide
+  "Voldtægt mv.": sexual_assault
+  "Røveri": robbery_violent
+  "Alvorligere vold": assault_serious
+  "Særlig alvorlig vold": assault_serious
+  "Voldsforbrydelser i alt": violent_total
+
+skip:
+  - "Overtrædelsens art i alt"
+  - "Straffelov i alt"
+  - "Uoplyst straffelov"
+  - "Seksualforbrydelser i alt"
+  - "Blodskam mv."
+  - "Heteroseksuel sædelighedsforbrydelse mod barn under 12 år (Udgået 2013)"
+  - "Simpel vold"
+  - "Vold og lignende mod offentlig myndighed"
+  - "Psykisk vold mv."
+  - "Vold mod sagesløs"
+  - "Uagtsomt manddrab mv. i forbindelse med færdselsuheld"
+  - "Uagtsomt manddrab/legemsbeskadigelse"
+
+notes: |
+  Source: Danmarks Statistik (Statbank), table STRAF11 "Reported criminal
+  offences by region, type of offence and time". Quarterly data; we
+  aggregate to annual by summing Q1-Q4. Latest year only if Q4 of that
+  year is published — otherwise we use the most recent complete year.
+
+  STRAF12 (suspects, with herkomst/origin dimension) is the source for
+  the foreign-background story; not wired in this revision.
