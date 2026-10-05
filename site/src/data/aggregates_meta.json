@@ -41,9 +41,9 @@
   },
   {
     "country": "ES",
-    "latest_period_end": "2024-12-31T00:00:00",
-    "retrieved_at": "2026-07-05T07:08:57.475177",
-    "n_rows": 2130,
+    "latest_period_end": "2025-12-31T00:00:00",
+    "retrieved_at": "2026-10-05T06:29:39.355098",
+    "n_rows": 2338,
     "n_regions": 53,
     "authority": "Ministerio del Interior"
   },
@@ -98,7 +98,7 @@
   {
     "country": "SE",
     "latest_period_end": "2025-12-31T00:00:00",
-    "retrieved_at": "2026-06-08T03:27:52.647165",
+    "retrieved_at": "2026-10-05T06:29:41.430569",
     "n_rows": 4,
     "n_regions": 1,
     "authority": "BR\u00c5"
